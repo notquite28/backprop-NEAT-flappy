@@ -1,0 +1,19 @@
+[project]
+name = "neat-flappy-jax"
+version = "0.1.0"
+description = "A self-contained JAX NEAT trainer for Flappy Bird"
+requires-python = ">=3.11"
+dependencies = ["jax[cuda13]", "numpy", "pygame"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = ["pytest"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["neat_flappy"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
