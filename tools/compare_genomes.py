@@ -47,7 +47,7 @@ def compare(
             start = episode.prepare_frame()
             live_genomes = [genomes[index] for index in start.bird_ids]
             live_stores = [stores[index] for index in start.bird_ids]
-            logits = batch_forward(live_genomes, live_stores, start.observations)
+            logits = batch_forward(live_genomes, live_stores, start.observations, pad_to=len(genomes))
             end = episode.step(logits > 0.0)
             for row, genome_index in enumerate(end.bird_ids):
                 reward = float(end.rewards[row])

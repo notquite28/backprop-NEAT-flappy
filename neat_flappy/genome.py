@@ -1,6 +1,7 @@
 """Hardmaru-style genome records with a strict feed-forward invariant."""
 from __future__ import annotations
 
+from collections import deque
 from dataclasses import dataclass, field
 from enum import Enum
 import json
@@ -160,11 +161,7 @@ def initial_population(
     return population
 
 
-def _reachable(genome: Genome, start: int, target: int) -> bool:
-    outgoing: dict[int, list[int]] = {}
-    for gene in genome.connections.values():
-        if gene.enabled:
-            outgoing.setdefault(gene.src, []).append(gene.dst)
+def _reachable_with(outgoing: dict[int, list[int]], start: int, target: int) -> bool:
     stack = [start]
     seen: set[int] = set()
     while stack:
@@ -175,6 +172,14 @@ def _reachable(genome: Genome, start: int, target: int) -> bool:
             seen.add(node)
             stack.extend(outgoing.get(node, ()))
     return False
+
+
+def _reachable(genome: Genome, start: int, target: int) -> bool:
+    outgoing: dict[int, list[int]] = {}
+    for gene in genome.connections.values():
+        if gene.enabled:
+            outgoing.setdefault(gene.src, []).append(gene.dst)
+    return _reachable_with(outgoing, start, target)
 
 
 def validate_genome(genome: Genome, store: InnovationStore) -> None:
@@ -209,16 +214,15 @@ def validate_genome(genome: Genome, store: InnovationStore) -> None:
     for gene in enabled:
         indegree[gene.dst] += 1
         outgoing.setdefault(gene.src, []).append(gene.dst)
-    queue = sorted(node for node, degree in indegree.items() if degree == 0)
+    queue = deque(sorted(node for node, degree in indegree.items() if degree == 0))
     visited = 0
     while queue:
-        node = queue.pop(0)
+        node = queue.popleft()
         visited += 1
-        for dst in outgoing.get(node, ()):
+        for dst in sorted(outgoing.get(node, ())):
             indegree[dst] -= 1
             if indegree[dst] == 0:
                 queue.append(dst)
-                queue.sort()
     if visited != len(indegree):
         raise ValueError("enabled connections contain a cycle")
 
@@ -300,9 +304,13 @@ def crossover(
         node_ids.update((selected.src, selected.dst))
         inherited[innovation] = selected
     child = Genome(child_id, frozenset(node_ids), {}, rms_cache={})
+    outgoing: dict[int, list[int]] = {}
     for innovation, gene in inherited.items():
-        if gene.enabled and _reachable(child, gene.dst, gene.src):
-            gene.enabled = False
+        if gene.enabled:
+            if _reachable_with(outgoing, gene.dst, gene.src):
+                gene.enabled = False
+            else:
+                outgoing.setdefault(gene.src, []).append(gene.dst)
         child.connections[innovation] = gene
         child.rms_cache[innovation] = 0.0
     validate_genome(child, store)

@@ -114,11 +114,18 @@ def cluster_best(clustering: Clustering) -> list[Genome]:
 
 
 def cluster_scores(clustering: Clustering) -> dict[int, float]:
-    """Return each cluster's best fitness, as Hardmaru's extinction rule does."""
-    return {
-        medoid: max(float(member.fitness) for member in members)
-        for medoid, members in clustering.clusters.items()
-    }
+    """Return each cluster's best fitness, as Hardmaru's extinction rule does.
+
+    Empty clusters are omitted: every medoid is a population member so its
+    cluster is non-empty in practice, but the guard keeps ``max`` from
+    crashing on a degenerate clustering.
+    """
+    scores: dict[int, float] = {}
+    for medoid, members in clustering.clusters.items():
+        if not members:
+            continue
+        scores[medoid] = max(float(member.fitness) for member in members)
+    return scores
 
 
 def _roulette(members: Sequence[Genome], rng: random.Random) -> Genome:

@@ -1,6 +1,7 @@
 """Dependency-free SVG rendering for starting and champion genomes."""
 from __future__ import annotations
 
+from collections import deque
 from html import escape
 from pathlib import Path
 import math
@@ -26,10 +27,10 @@ def _levels(genome: Genome, store: InnovationStore) -> dict[int, int]:
             incoming.setdefault(gene.dst, []).append(gene.src)
             outgoing.setdefault(gene.src, []).append(gene.dst)
             indegree[gene.dst] += 1
-    queue = sorted(node_id for node_id, degree in indegree.items() if degree == 0)
+    queue = deque(sorted(node_id for node_id, degree in indegree.items() if degree == 0))
     levels: dict[int, int] = {}
     while queue:
-        node_id = queue.pop(0)
+        node_id = queue.popleft()
         predecessors = incoming.get(node_id, ())
         node = store.nodes[node_id]
         minimum = 1 if node.kind is NodeKind.HIDDEN else 0
@@ -41,7 +42,6 @@ def _levels(genome: Genome, store: InnovationStore) -> dict[int, int]:
             indegree[destination] -= 1
             if indegree[destination] == 0:
                 queue.append(destination)
-                queue.sort()
     if len(levels) != len(genome.node_ids):
         raise ValueError("cannot render a cyclic genome")
     hidden_levels = [

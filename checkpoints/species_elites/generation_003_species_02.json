@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "generation": 3,
+  "fitness": 3.779313121728879,
+  "score": 0.0,
+  "input_count": 2,
+  "output_count": 1,
+  "nodes": [
+    {
+      "id": 0,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 1,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 2,
+      "kind": "bias",
+      "activation": null
+    },
+    {
+      "id": 3,
+      "kind": "output",
+      "activation": null
+    },
+    {
+      "id": 7,
+      "kind": "hidden",
+      "activation": "gaussian"
+    },
+    {
+      "id": 49,
+      "kind": "hidden",
+      "activation": "relu"
+    }
+  ],
+  "connections": [
+    {
+      "innovation": 0,
+      "src": 0,
+      "dst": 3,
+      "weight": -0.5547212681148949,
+      "enabled": false
+    },
+    {
+      "innovation": 1,
+      "src": 1,
+      "dst": 3,
+      "weight": 0.8420044183731079,
+      "enabled": true
+    },
+    {
+      "innovation": 2,
+      "src": 2,
+      "dst": 3,
+      "weight": -0.667780321721105,
+      "enabled": false
+    },
+    {
+      "innovation": 9,
+      "src": 0,
+      "dst": 7,
+      "weight": 1.035163402557373,
+      "enabled": true
+    },
+    {
+      "innovation": 10,
+      "src": 7,
+      "dst": 3,
+      "weight": -0.5273404121398926,
+      "enabled": true
+    },
+    {
+      "innovation": 11,
+      "src": 1,
+      "dst": 7,
+      "weight": -0.6567018628120422,
+      "enabled": true
+    },
+    {
+      "innovation": 103,
+      "src": 2,
+      "dst": 49,
+      "weight": 0.40795034170150757,
+      "enabled": true
+    },
+    {
+      "innovation": 104,
+      "src": 49,
+      "dst": 3,
+      "weight": -0.11160236597061157,
+      "enabled": true
+    }
+  ]
+}

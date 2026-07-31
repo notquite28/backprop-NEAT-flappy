@@ -1,0 +1,112 @@
+{
+  "version": 1,
+  "generation": 8,
+  "fitness": 150.70354084220943,
+  "score": 13.0,
+  "input_count": 2,
+  "output_count": 1,
+  "nodes": [
+    {
+      "id": 0,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 1,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 2,
+      "kind": "bias",
+      "activation": null
+    },
+    {
+      "id": 3,
+      "kind": "output",
+      "activation": null
+    },
+    {
+      "id": 7,
+      "kind": "hidden",
+      "activation": "gaussian"
+    },
+    {
+      "id": 49,
+      "kind": "hidden",
+      "activation": "relu"
+    }
+  ],
+  "connections": [
+    {
+      "innovation": 0,
+      "src": 0,
+      "dst": 3,
+      "weight": -0.18499365494272713,
+      "enabled": true
+    },
+    {
+      "innovation": 1,
+      "src": 1,
+      "dst": 3,
+      "weight": 0.12056679878012339,
+      "enabled": true
+    },
+    {
+      "innovation": 2,
+      "src": 2,
+      "dst": 3,
+      "weight": -0.6574937583025322,
+      "enabled": false
+    },
+    {
+      "innovation": 9,
+      "src": 0,
+      "dst": 7,
+      "weight": 0.42753544812417343,
+      "enabled": true
+    },
+    {
+      "innovation": 10,
+      "src": 7,
+      "dst": 3,
+      "weight": -0.7768810391426086,
+      "enabled": true
+    },
+    {
+      "innovation": 11,
+      "src": 1,
+      "dst": 7,
+      "weight": -0.8319400181315096,
+      "enabled": true
+    },
+    {
+      "innovation": 103,
+      "src": 2,
+      "dst": 49,
+      "weight": 0.6470768149601852,
+      "enabled": true
+    },
+    {
+      "innovation": 104,
+      "src": 49,
+      "dst": 3,
+      "weight": 0.3578093801213103,
+      "enabled": true
+    },
+    {
+      "innovation": 125,
+      "src": 1,
+      "dst": 49,
+      "weight": 0.05727430935436732,
+      "enabled": true
+    },
+    {
+      "innovation": 161,
+      "src": 0,
+      "dst": 49,
+      "weight": 0.03582791943065371,
+      "enabled": true
+    }
+  ]
+}

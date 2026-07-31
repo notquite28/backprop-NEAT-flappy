@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "generation": 2,
+  "fitness": 2.2357094369400095,
+  "score": 0.0,
+  "input_count": 2,
+  "output_count": 1,
+  "nodes": [
+    {
+      "id": 0,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 1,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 2,
+      "kind": "bias",
+      "activation": null
+    },
+    {
+      "id": 3,
+      "kind": "output",
+      "activation": null
+    },
+    {
+      "id": 7,
+      "kind": "hidden",
+      "activation": "gaussian"
+    }
+  ],
+  "connections": [
+    {
+      "innovation": 0,
+      "src": 0,
+      "dst": 3,
+      "weight": -0.5614239126241455,
+      "enabled": false
+    },
+    {
+      "innovation": 1,
+      "src": 1,
+      "dst": 3,
+      "weight": 0.7229045033454895,
+      "enabled": true
+    },
+    {
+      "innovation": 2,
+      "src": 2,
+      "dst": 3,
+      "weight": -0.6725285649299622,
+      "enabled": true
+    },
+    {
+      "innovation": 9,
+      "src": 0,
+      "dst": 7,
+      "weight": 0.5376508235931396,
+      "enabled": true
+    },
+    {
+      "innovation": 10,
+      "src": 7,
+      "dst": 3,
+      "weight": -1.0044629573822021,
+      "enabled": true
+    },
+    {
+      "innovation": 11,
+      "src": 1,
+      "dst": 7,
+      "weight": 0.11761995404958725,
+      "enabled": true
+    }
+  ]
+}

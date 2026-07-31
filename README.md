@@ -19,10 +19,10 @@ population mean improved.
 
 | Generation | Global best fitness | Candidate mean fitness | Pipe score | Alive frames |
 | ---: | ---: | ---: | ---: | ---: |
-| 0 | 156.850 | 4.998 | 13.000 | 1,000 |
-| 5 | 156.850 | 40.242 | 13.000 | 1,000 |
-| 8 | 156.850 | 98.459 | 13.000 | 1,000 |
-| 9 | 156.850 | 92.894 | 13.000 | 1,000 |
+| 0 | 156.850 | 4.993 | 13.000 | 1,000 |
+| 5 | 156.850 | 31.823 | 13.000 | 1,000 |
+| 8 | 156.850 | 81.293 | 13.000 | 1,000 |
+| 9 | 156.850 | 101.944 | 13.000 | 1,000 |
 
 Fitness includes the connection-count penalty. Pipe score and alive frames do
 not. Each value uses three deterministic evaluation episodes. A replay with
@@ -33,7 +33,7 @@ another seed can have a different score.
 The left graph is genome 0 before evaluation or backpropagation. The center
 graph is the global champion, discovered in generation 0. The right graph is
 the most structurally complex retained offspring from generation 9. It has
-three hidden nodes with `gaussian`, `relu`, and `relu` operators. This sample
+four hidden nodes with `square`, `multiply`, `add`, and `add` operators. This sample
 shows that feed-forward topology mutation is active even though the simpler
 generation-0 policy remains the global champion. Green edges have positive
 weights. Red edges have negative weights. Dashed gray edges are disabled.
@@ -55,7 +55,7 @@ These animations use replay seed 0 and the same game state machine:
   </tr>
   <tr>
     <td>Genome 0 before evaluation or backpropagation</td>
-    <td>Generation 2 offspring: saved fitness 49.241, mean score 4</td>
+    <td>Generation 2 offspring: saved fitness 9.411, mean score 0</td>
     <td>Global champion: saved fitness 156.850, mean score 13</td>
   </tr>
 </table>
@@ -77,21 +77,25 @@ points. Each pair used the same pipe sequence.
 | ---: | --- | ---: | ---: | --- |
 | 0 | Global best | 1,000 | 75,020 | Score cap |
 | 0 | Generation 9 best offspring | 1,000 | 75,020 | Score cap |
-| 0 | Generation 9 topology sample | 0 | 85 | Death |
+| 0 | Generation 9 topology sample | 0 | 82 | Death |
 | 9,000 | Global best | 1,000 | 75,020 | Score cap |
 | 9,000 | Generation 9 best offspring | 1,000 | 75,020 | Score cap |
-| 9,000 | Generation 9 topology sample | 1 | 97 | Death |
+| 9,000 | Generation 9 topology sample | 0 | 81 | Death |
 | 9,001 | Global best | 1,000 | 75,020 | Score cap |
 | 9,001 | Generation 9 best offspring | 1,000 | 75,020 | Score cap |
-| 9,001 | Generation 9 topology sample | 0 | 87 | Death |
+| 9,001 | Generation 9 topology sample | 0 | 81 | Death |
 | 9,002 | Global best | 1,000 | 75,020 | Score cap |
 | 9,002 | Generation 9 best offspring | 1,000 | 75,020 | Score cap |
-| 9,002 | Generation 9 topology sample | 1 | 108 | Death |
+| 9,002 | Generation 9 topology sample | 0 | 81 | Death |
 
-The generation 9 best offspring ties the global champion on all four long
-runs. Both are minimal three-connection policies. The plotted generation 9
-topology sample is a different checkpoint, selected for structural complexity,
-and does not approach their game performance.
+The global champion and the generation 9 best offspring reach the 1,000-point
+cap in exactly 75,020 frames on all four seeds. Both are minimal
+three-connection policies with the same weights. The generation 9 topology
+sample, an eight-node network with fifteen connections selected for structural
+complexity, dies within 82 frames on every seed. Its saved fitness (6.361)
+reflects the untrained complex network: four policy-gradient cycles per
+generation are not enough to converge a random high-connection topology, and
+the connection penalty keeps its fitness far below the champion's 156.850.
 
 Reproduce either pair with:
 
@@ -115,20 +119,24 @@ a post-processing truncation.
 flowchart LR
     G[Host Python genomes] --> C[Validated DAG compiler]
     C --> J[JAX jit and vmap policy]
-    J --> E[Shared FlappyEpisode]
-    E --> F[Deterministic fitness]
-    E --> T[Stochastic trajectories]
+    J --> S[lax.scan episode engine]
+    S --> F[Deterministic fitness]
+    S --> T[Stochastic trajectories]
     T --> P[Policy-gradient RMSProp]
     P --> R[Paired rollback check]
     R --> K[PAM k-medoids]
     F --> K
     K --> X[Crossover and mutations]
     X --> G
+    J --> E[Pygame episode]
+    E --> V[Replay and rendering]
 ```
 
 Host Python owns discrete graph topology, evolution, random topology choices,
-and game transitions. JAX owns numeric inference, action sampling, loss
-evaluation, gradients, and RMSProp weight updates.
+and episode scheduling. JAX owns numeric inference, action sampling, loss
+evaluation, gradients, and RMSProp weight updates. Training runs each
+population episode as one compiled `jax.lax.scan` over frames with `vmap`
+over birds. Replay and rendering keep the Pygame state machine.
 
 ## Game state and policy
 
@@ -159,16 +167,24 @@ Action `1` makes the bird jump. Deterministic evaluation and replay jump when
 $z_t>0$, which is equivalent to $\sigma(z_t)>0.5$. Policy-gradient episodes
 sample the action from the Bernoulli distribution.
 
-The episode keeps the original Pygame behavior:
+Training uses a pure-JAX vectorized engine. Replay and rendering use the
+original Pygame state machine. Both engines share the same constants and the
+same seeded pipe schedule:
 
 - Window size: 600 by 800.
 - Floor height: 730.
 - Pipe gap: 200 pixels.
 - Pipe and floor speed: 5 pixels per frame.
 - Bird jump velocity: `-10.5`.
-- Pixel-mask pipe collisions.
-- Original bird tilt and animation sequence.
 - One seeded pipe sequence shared by all birds in a candidate batch.
+- Original bird tilt and animation sequence (Pygame engine only).
+
+The engines differ only in collision testing. The Pygame engine uses
+pixel-perfect sprite masks and rounds the bird height to an integer pixel.
+The training engine uses axis-aligned bounding boxes against the bird image
+rectangle of 68 by 48 pixels. The box test is slightly more conservative, so
+a genome trained with the vectorized engine can replay marginally differently
+under Pygame.
 
 The frame reward order is:
 
@@ -181,6 +197,9 @@ The frame reward order is:
 7. Remove floor and upper-bound deaths without another penalty.
 
 A terminal frame keeps rewards that occurred before the terminal removal.
+
+The vectorized training engine applies the same reward components in the same
+order inside each scan step.
 
 ## Starting genome
 
@@ -440,8 +459,10 @@ The hot numeric paths use:
 
 - `jax.jit` for inference, action sampling, policy loss, gradients, and RMSProp.
 - `jax.vmap` for genomes with matching graph signatures.
-- Fixed `max_frames` trajectory arrays and masks to prevent recompilation for
-  different episode lengths.
+- `jax.lax.scan` over frames with `vmap` over birds, so one compiled program
+  per topology runs a whole population episode.
+- Static population-width batches and a fixed `max_frames` scan length to
+  prevent recompilation for different live-bird counts or episode lengths.
 - `jax.lax.switch` for hidden-node operators.
 
 Only the enabled weight vector is differentiated. Topology, innovation IDs,
@@ -587,6 +608,10 @@ generation, cycle, genome ID, frame
 
 Deterministic evaluation uses common episode seeds for all candidates. This
 reduces fitness noise during comparisons.
+
+The vectorized training engine precomputes the pipe height sequence from the
+episode seed. Its birds therefore face the same pipe schedule as the Pygame
+engine for the same seed.
 
 ## Install
 
@@ -743,7 +768,8 @@ The tests cover game transitions, score-cap termination, animation, collision
 masks, deterministic pipes, mutation invariants, cycle prevention, crossover,
 innovation and JSON round trips, activation semantics, unreachable nodes,
 batched `jit`/`vmap` equivalence, finite gradients, PAM, extinction, fixed-size
-elite injection, archive snapshots, and harmful-update rollback.
+elite injection, archive snapshots, harmful-update rollback, and vectorized
+engine determinism, reward accounting, and trajectory shapes.
 
 ## References
 
@@ -772,6 +798,7 @@ flappy_bird.py                 Train, replay, and graph CLI
 neat_flappy/game.py            Game mechanics, episode state, renderer
 neat_flappy/genome.py          Genes, innovations, mutations, crossover, JSON
 neat_flappy/phenotype.py       DAG compiler and JAX numeric programs
+neat_flappy/vectorized.py      Vectorized lax.scan training episode engine
 neat_flappy/evolution.py       Distance, PAM clusters, archives, reproduction
 neat_flappy/training.py        Evaluation, REINFORCE, RMSProp, rollback
 neat_flappy/visualization.py   Dependency-free SVG graph rendering
@@ -786,7 +813,8 @@ tests/                         Behavioral and numerical tests
 
 - The game module does not import genome or evolution types.
 - Training never opens a Pygame window.
-- Replay and fitness evaluation use the same episode state machine.
+- Training uses the vectorized JAX engine. Replay and tools use the Pygame
+  state machine. Both share the same constants, pipe schedule, and rewards.
 - The graph is always acyclic.
 - Topology stays on the host.
 - Only fixed-topology numeric weights enter JAX automatic differentiation.

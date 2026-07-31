@@ -11,8 +11,8 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
+from . import vectorized
 from .evolution import Clustering, cluster_best, pam_cluster, reproduce
-from .game import FlappyEpisode
 from .genome import (
     BASE_NODE_IDS,
     Genome,
@@ -21,7 +21,7 @@ from .genome import (
     initial_population,
     save_genome,
 )
-from .phenotype import batch_forward, batch_sample_actions, compile_genome
+from .phenotype import CompiledPhenotype, compile_genome
 
 
 CONNECTION_PENALTY_FACTOR = 0.03
@@ -80,33 +80,47 @@ def complexity_adjusted_fitness(raw_fitness: float, connection_count: int) -> fl
 
 
 
+def _group_candidates(
+    candidates: Sequence[Genome], store: InnovationStore
+) -> tuple[dict[tuple, list[int]], dict[tuple, CompiledPhenotype]]:
+    """Group population indexes by compiled structural signature."""
+    groups: dict[tuple, list[int]] = {}
+    compiled_by_key: dict[tuple, CompiledPhenotype] = {}
+    for index, genome in enumerate(candidates):
+        compiled = compile_genome(genome, store)
+        groups.setdefault(compiled.signature, []).append(index)
+        compiled_by_key[compiled.signature] = compiled
+    return groups, compiled_by_key
+
+
 def evaluate_candidates(
     candidates: Sequence[Genome],
     store: InnovationStore,
     seeds: Sequence[int],
     max_frames: int,
 ) -> None:
-    totals = np.zeros(len(candidates), np.float64)
-    scores = np.zeros(len(candidates), np.float64)
-    frames = np.zeros(len(candidates), np.float64)
+    population = len(candidates)
+    totals = np.zeros(population, np.float64)
+    scores = np.zeros(population, np.float64)
+    frames = np.zeros(population, np.float64)
+    groups, compiled_by_key = _group_candidates(candidates, store)
     for seed in seeds:
-        episode = FlappyEpisode(len(candidates), seed, max_frames)
-        episode_returns = np.zeros(len(candidates), np.float64)
-        episode_scores = np.zeros(len(candidates), np.float64)
-        episode_frames = np.zeros(len(candidates), np.float64)
-        while not episode.done:
-            start = episode.prepare_frame()
-            live = [candidates[index] for index in start.bird_ids]
-            logits = batch_forward(live, store, start.observations)
-            end = episode.step(logits > 0.0)
-            for bird_id, reward in zip(end.bird_ids, end.rewards, strict=True):
-                episode_returns[bird_id] += float(reward)
-                episode_frames[bird_id] += 1
-                if reward >= 4.0:
-                    episode_scores[bird_id] += 1
-        totals += episode_returns
-        scores += episode_scores
-        frames += episode_frames
+        heights = jnp.asarray(vectorized.pipe_heights(seed, max_frames // 40 + 16))
+        for signature, indexes in groups.items():
+            compiled = compiled_by_key[signature]
+            padded = indexes + [indexes[0]] * (population - len(indexes))
+            weights = jnp.asarray(
+                np.stack([compiled.weights_for(candidates[i]) for i in padded])
+            )
+            ids = jnp.asarray([candidates[i].id for i in padded], dtype=jnp.int32)
+            runner = vectorized.get_runner(
+                signature, compiled.raw_forward, max_frames, sample=False
+            )
+            result = runner(weights, heights, jax.random.PRNGKey(0), 0, 0, ids)
+            count = len(indexes)
+            totals[indexes] += np.asarray(result["returns"][:count], dtype=np.float64)
+            scores[indexes] += np.asarray(result["scores"][:count], dtype=np.float64)
+            frames[indexes] += np.asarray(result["frames"][:count], dtype=np.float64)
     divisor = float(len(seeds))
     for index, genome in enumerate(candidates):
         raw_fitness = float(totals[index] / divisor)
@@ -157,50 +171,39 @@ def policy_gradient_cycle(
     cycle: int,
     max_frames: int,
 ) -> float:
-    observations: list[list[np.ndarray]] = [[] for _ in candidates]
-    actions: list[list[bool]] = [[] for _ in candidates]
-    rewards: list[list[float]] = [[] for _ in candidates]
-    episode = FlappyEpisode(len(candidates), seed, max_frames)
-    while not episode.done:
-        start = episode.prepare_frame()
-        live = [candidates[index] for index in start.bird_ids]
-        sampled = batch_sample_actions(
-            live,
-            store,
-            start.observations,
-            root_key,
-            generation,
-            cycle,
-            episode.frame,
-        )
-        for row, candidate_index in enumerate(start.bird_ids):
-            observations[candidate_index].append(start.observations[row].copy())
-            actions[candidate_index].append(bool(sampled[row]))
-        end = episode.step(sampled)
-        for bird_id, reward in zip(end.bird_ids, end.rewards, strict=True):
-            rewards[bird_id].append(float(reward))
-
+    population = len(candidates)
+    groups, compiled_by_key = _group_candidates(candidates, store)
+    heights = jnp.asarray(vectorized.pipe_heights(seed, max_frames // 40 + 16))
     largest_delta = 0.0
-    groups: dict[tuple, list[int]] = {}
-    compiled_by_key = {}
-    for index, genome in enumerate(candidates):
-        compiled = compile_genome(genome, store)
-        groups.setdefault(compiled.signature, []).append(index)
-        compiled_by_key[compiled.signature] = compiled
     for signature, indexes in groups.items():
         compiled = compiled_by_key[signature]
         batch_size = len(indexes)
+        padded = indexes + [indexes[0]] * (population - batch_size)
+        padded_weights = jnp.asarray(
+            np.stack([compiled.weights_for(candidates[i]) for i in padded])
+        )
+        ids = jnp.asarray([candidates[i].id for i in padded], dtype=jnp.int32)
+        runner = vectorized.get_runner(
+            signature, compiled.raw_forward, max_frames, sample=True
+        )
+        result = runner(padded_weights, heights, root_key, generation, cycle, ids)
+        obs_all = np.asarray(result["obs"])
+        actions_all = np.asarray(result["actions"])
+        rewards_all = np.asarray(result["rewards"])
+        alive_all = np.asarray(result["alive"])
         observation_batch = np.zeros(
             (batch_size, max_frames, INPUT_COUNT), dtype=np.float32
         )
         action_batch = np.zeros((batch_size, max_frames), dtype=np.bool_)
         advantage_batch = np.zeros((batch_size, max_frames), dtype=np.float32)
         mask_batch = np.zeros((batch_size, max_frames), dtype=np.bool_)
-        for row, index in enumerate(indexes):
-            length = len(actions[index])
-            observation_batch[row, :length] = observations[index]
-            action_batch[row, :length] = actions[index]
-            advantage_batch[row, :length] = _discounted_advantages(rewards[index])
+        for row in range(batch_size):
+            length = int(alive_all[:, row].sum())
+            observation_batch[row, :length] = obs_all[:length, row]
+            action_batch[row, :length] = actions_all[:length, row]
+            advantage_batch[row, :length] = _discounted_advantages(
+                rewards_all[:length, row]
+            )
             mask_batch[row, :length] = True
         weights = np.stack([compiled.weights_for(candidates[index]) for index in indexes])
         caches = np.asarray(

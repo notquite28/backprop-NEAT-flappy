@@ -1,6 +1,7 @@
 """Compile validated acyclic genomes into fixed-topology JAX programs."""
 from __future__ import annotations
 
+from collections import deque
 from dataclasses import dataclass
 from typing import Callable, Sequence
 
@@ -27,6 +28,7 @@ class CompiledPhenotype:
     signature: tuple
     innovations: tuple[int, ...]
     forward: Callable[[jax.Array, jax.Array], jax.Array]
+    raw_forward: Callable[[jax.Array, jax.Array], jax.Array]
     batch_forward: Callable[[jax.Array, jax.Array], jax.Array]
     batch_sample: Callable
     policy_loss: Callable[[jax.Array, jax.Array, jax.Array, jax.Array, jax.Array], jax.Array]
@@ -100,16 +102,15 @@ def compile_genome(genome: Genome, store: InnovationStore) -> CompiledPhenotype:
         incoming.setdefault(gene.dst, []).append(gene)
         outgoing.setdefault(gene.src, []).append(gene.dst)
         indegree[gene.dst] += 1
-    queue = sorted(node for node, degree in indegree.items() if degree == 0)
+    queue = deque(sorted(node for node, degree in indegree.items() if degree == 0))
     topological: list[int] = []
     while queue:
-        node = queue.pop(0)
+        node = queue.popleft()
         topological.append(node)
         for dst in sorted(outgoing.get(node, ())):
             indegree[dst] -= 1
             if indegree[dst] == 0:
                 queue.append(dst)
-                queue.sort()
     if len(topological) != len(nodes):
         raise ValueError("cannot compile a cyclic genome")
 
@@ -171,8 +172,9 @@ def compile_genome(genome: Genome, store: InnovationStore) -> CompiledPhenotype:
         entropy = -probability * jax.nn.log_sigmoid(logits) - (1.0 - probability) * jax.nn.log_sigmoid(-logits)
         valid = mask.astype(jnp.float32)
         count = jnp.sum(valid)
-        policy = -jnp.sum(valid * jax.lax.stop_gradient(advantages) * log_prob) / count
-        return policy - 0.01 * jnp.sum(valid * entropy) / count
+        safe_count = jnp.maximum(count, 1.0)
+        policy = -jnp.sum(valid * jax.lax.stop_gradient(advantages) * log_prob) / safe_count
+        return policy - 0.01 * jnp.sum(valid * entropy) / safe_count
 
     def raw_batch_sample(
         weights: jax.Array,
@@ -207,6 +209,7 @@ def compile_genome(genome: Genome, store: InnovationStore) -> CompiledPhenotype:
         signature,
         innovations,
         forward,
+        raw_forward,
         batched_forward,
         batch_sample,
         policy_loss,
@@ -221,8 +224,15 @@ def batch_forward(
     genomes: Sequence[Genome],
     stores: Sequence[InnovationStore] | InnovationStore,
     observations: np.ndarray,
+    *,
+    pad_to: int,
 ) -> np.ndarray:
-    """Group matching structures and vmap their shared compiled function."""
+    """Group matching structures and vmap their shared compiled function.
+
+    Each group is padded with copies of its first lane up to ``pad_to`` so the
+    compiled function is always called at a static width, avoiding one XLA
+    recompile per distinct group size. Padded lanes are discarded.
+    """
     if len(genomes) != len(observations):
         raise ValueError("genomes and observations must have equal length")
     store_list = [stores] * len(genomes) if isinstance(stores, InnovationStore) else list(stores)
@@ -234,11 +244,14 @@ def batch_forward(
         groups.setdefault(compiled.signature, []).append(index)
         compiled_by_key[compiled.signature] = compiled
     for key, indexes in groups.items():
+        if pad_to < len(indexes):
+            raise ValueError("pad_to must be >= group size")
         compiled = compiled_by_key[key]
-        weights = jnp.asarray(np.stack([compiled.weights_for(genomes[i]) for i in indexes]))
-        obs = jnp.asarray(observations[indexes])
+        padded = indexes + [indexes[0]] * (pad_to - len(indexes))
+        weights = jnp.asarray(np.stack([compiled.weights_for(genomes[i]) for i in padded]))
+        obs = jnp.asarray(observations[padded])
         values = compiled.batch_forward(weights, obs)
-        result[indexes] = np.asarray(values)
+        result[indexes] = np.asarray(values[: len(indexes)])
     return result
 
 
@@ -250,8 +263,16 @@ def batch_sample_actions(
     generation: int,
     cycle: int,
     frame: int,
+    *,
+    pad_to: int,
 ) -> np.ndarray:
-    """Group matching structures and sample all live policies on device."""
+    """Group matching structures and sample all live policies on device.
+
+    Groups are padded to ``pad_to`` lanes (copies of the first lane) so the
+    compiled sampler runs at a static width; padded lanes are discarded.
+    Per-lane sampling keys depend only on the lane's genome id and frame, so
+    padding never perturbs real lanes.
+    """
     if len(genomes) != len(observations):
         raise ValueError("genomes and observations must have equal length")
     result = np.empty(len(genomes), dtype=np.bool_)
@@ -262,12 +283,15 @@ def batch_sample_actions(
         groups.setdefault(compiled.signature, []).append(index)
         compiled_by_key[compiled.signature] = compiled
     for key, indexes in groups.items():
+        if pad_to < len(indexes):
+            raise ValueError("pad_to must be >= group size")
         compiled = compiled_by_key[key]
-        weights = jnp.asarray(np.stack([compiled.weights_for(genomes[i]) for i in indexes]))
-        obs = jnp.asarray(observations[indexes])
-        ids = jnp.asarray([genomes[i].id for i in indexes], dtype=jnp.int32)
+        padded = indexes + [indexes[0]] * (pad_to - len(indexes))
+        weights = jnp.asarray(np.stack([compiled.weights_for(genomes[i]) for i in padded]))
+        obs = jnp.asarray(observations[padded])
+        ids = jnp.asarray([genomes[i].id for i in padded], dtype=jnp.int32)
         sampled = compiled.batch_sample(
             weights, obs, root_key, generation, cycle, ids, frame
         )
-        result[indexes] = np.asarray(sampled)
+        result[indexes] = np.asarray(sampled[: len(indexes)])
     return result

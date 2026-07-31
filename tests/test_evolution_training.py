@@ -1,9 +1,14 @@
 import random
 
+import jax
+import numpy as np
 import pytest
 
 from neat_flappy.evolution import compatibility_distance, pam_cluster, reproduce
 from neat_flappy.genome import (
+    BASE_NODE_IDS,
+    ConnectionGene,
+    Genome,
     InnovationStore,
     add_node,
     initial_population,
@@ -13,6 +18,7 @@ from neat_flappy.training import (
     TrainingConfig,
     complexity_adjusted_fitness,
     paired_backprop,
+    policy_gradient_cycle,
     _generation_records,
     _inject_elites,
     _save_elite_snapshots,
@@ -137,3 +143,62 @@ def test_harmful_gradient_update_rolls_back(monkeypatch, tmp_path):
     assert candidates[0].connections[0].weight == pytest.approx(original)
     assert candidates[0].fitness == pytest.approx(-abs(original))
     assert evaluation_seeds == [(9_000,), (9_000,)]
+
+
+
+def base_genome(genome_id, w0, w1, w2):
+    """A base-topology genome: output logit w0*obs0 + w1*obs1 + w2."""
+    store = InnovationStore.base()
+    genes = {
+        innovation: ConnectionGene(innovation, src, 3, 0.0, True)
+        for innovation, (src, _dst) in store.connection_endpoints.items()
+    }
+    genes[0].weight = w0
+    genes[1].weight = w1
+    genes[2].weight = w2
+    genome = Genome(
+        genome_id,
+        BASE_NODE_IDS,
+        genes,
+        rms_cache={innovation: 0.0 for innovation in genes},
+    )
+    return genome, store
+
+
+def test_policy_gradient_gathers_trajectory_by_lane_not_population_index():
+    # A genome's REINFORCE update depends only on its own weights and its
+    # per-lane sampling key (folded from genome id), so it must be identical
+    # whether the genome runs alone or at a non-contiguous position in a
+    # mixed-topology population. The runner output column is the LANE position
+    # in the padded group, not the population index; reading it by population
+    # index corrupts every genome whose group position differs from its index.
+    #
+    # Three base-topology genomes with distinct weights and ids (so distinct
+    # trajectories) are interleaved with two hidden-node genomes. The base
+    # signature group is then [0, 2, 4], not [0, 1, 2]: under the old bug the
+    # genome at population index 2 reads lane 2 (the index-4 genome's real
+    # trajectory) instead of its own lane 1.
+    weights = [(0.3, -0.4, 0.1), (1.5, 0.0, -0.5), (-2.0, 3.0, 0.7)]
+    store = InnovationStore.base()
+
+    solo_weights = []
+    for genome_id, (w0, w1, w2) in enumerate(weights):
+        solo, _ = base_genome(genome_id, w0, w1, w2)
+        policy_gradient_cycle([solo], store, jax.random.PRNGKey(1), 5, 0, 0, 120)
+        solo_weights.append(
+            [solo.connections[i].weight for i in sorted(solo.connections)]
+        )
+
+    bases = [base_genome(genome_id, *weights[genome_id])[0] for genome_id in range(3)]
+    hidden_a, _ = base_genome(10, 0.9, 0.9, 0.9)
+    hidden_b, _ = base_genome(11, -0.9, 0.4, 0.2)
+    add_node(hidden_a, store, random.Random(3))  # distinct structural signature
+    add_node(hidden_b, store, random.Random(4))
+    mixed = [bases[0], hidden_a, bases[1], hidden_b, bases[2]]
+    policy_gradient_cycle(mixed, store, jax.random.PRNGKey(1), 5, 0, 0, 120)
+
+    for genome_id, genome in enumerate(bases):
+        mixed_weights = [genome.connections[i].weight for i in sorted(genome.connections)]
+        np.testing.assert_allclose(
+            mixed_weights, solo_weights[genome_id], rtol=1e-6, atol=1e-7
+        )
