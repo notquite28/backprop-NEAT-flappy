@@ -68,7 +68,13 @@ NODE_COLORS = {
     "add": "#59A14F",
     "square": "#EDC948",
 }
-INPUT_LABELS = {0: "gap Δy", 1: "velocity"}
+INPUT_LABELS = {
+    0: "gap Δy",
+    1: "velocity",
+    2: "gap size",
+    3: "next Δy",
+    4: "pipe Δx",
+}
 
 
 def _node_label(node_id: int, store: InnovationStore) -> str:

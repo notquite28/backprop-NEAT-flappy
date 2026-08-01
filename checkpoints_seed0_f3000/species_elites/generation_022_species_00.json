@@ -1,0 +1,115 @@
+{
+  "version": 1,
+  "generation": 22,
+  "fitness": 82.75185681264334,
+  "score": 7.0,
+  "input_count": 5,
+  "output_count": 1,
+  "nodes": [
+    {
+      "id": 0,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 1,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 2,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 3,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 4,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 5,
+      "kind": "bias",
+      "activation": null
+    },
+    {
+      "id": 6,
+      "kind": "output",
+      "activation": null
+    },
+    {
+      "id": 427,
+      "kind": "hidden",
+      "activation": "add"
+    }
+  ],
+  "connections": [
+    {
+      "innovation": 0,
+      "src": 0,
+      "dst": 6,
+      "weight": -0.7372491510341935,
+      "enabled": true
+    },
+    {
+      "innovation": 1,
+      "src": 1,
+      "dst": 6,
+      "weight": 0.05712274705483287,
+      "enabled": true
+    },
+    {
+      "innovation": 2,
+      "src": 2,
+      "dst": 6,
+      "weight": -0.027107311906911468,
+      "enabled": true
+    },
+    {
+      "innovation": 3,
+      "src": 3,
+      "dst": 6,
+      "weight": -0.019307891396853117,
+      "enabled": false
+    },
+    {
+      "innovation": 4,
+      "src": 4,
+      "dst": 6,
+      "weight": 0.11959690436966787,
+      "enabled": true
+    },
+    {
+      "innovation": 5,
+      "src": 5,
+      "dst": 6,
+      "weight": -0.07018872263947387,
+      "enabled": true
+    },
+    {
+      "innovation": 971,
+      "src": 3,
+      "dst": 427,
+      "weight": 1.0062151371949744,
+      "enabled": true
+    },
+    {
+      "innovation": 972,
+      "src": 427,
+      "dst": 6,
+      "weight": -0.02470720881023144,
+      "enabled": true
+    },
+    {
+      "innovation": 973,
+      "src": 0,
+      "dst": 427,
+      "weight": 0.012325920402671109,
+      "enabled": true
+    }
+  ]
+}

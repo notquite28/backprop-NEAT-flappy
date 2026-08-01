@@ -12,6 +12,8 @@ from typing import Any, Iterable
 
 import numpy as np
 
+from .schedule import OBSERVATION_COUNT
+
 
 class NodeKind(str, Enum):
     INPUT = "input"
@@ -34,11 +36,11 @@ class Activation(str, Enum):
 
 ACTIVATION_PALETTE = tuple(Activation)
 
-INPUT_COUNT = 2
+INPUT_COUNT = OBSERVATION_COUNT
 OUTPUT_COUNT = 1
 INPUT_NODE_IDS = tuple(range(INPUT_COUNT))
-BIAS_NODE_ID = 2
-OUTPUT_NODE_ID = 3
+BIAS_NODE_ID = INPUT_COUNT
+OUTPUT_NODE_ID = INPUT_COUNT + 1
 BASE_NODE_IDS = frozenset((*INPUT_NODE_IDS, BIAS_NODE_ID, OUTPUT_NODE_ID))
 
 
@@ -377,7 +379,7 @@ def load_genome(path: Path) -> tuple[Genome, InnovationStore, int]:
     if set(data) != expected or data["version"] != 1:
         raise ValueError("unsupported or malformed genome schema")
     if data["input_count"] != INPUT_COUNT or data["output_count"] != OUTPUT_COUNT:
-        raise ValueError("genome must have two inputs and one output")
+        raise ValueError(f"genome must have {INPUT_COUNT} inputs and {OUTPUT_COUNT} output")
     store = InnovationStore()
     node_ids: set[int] = set()
     for record in sorted(data["nodes"], key=lambda value: value["id"]):

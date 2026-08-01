@@ -1,0 +1,115 @@
+{
+  "version": 1,
+  "generation": 1,
+  "fitness": 19.266081293788524,
+  "score": 1.0,
+  "input_count": 5,
+  "output_count": 1,
+  "nodes": [
+    {
+      "id": 0,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 1,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 2,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 3,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 4,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 5,
+      "kind": "bias",
+      "activation": null
+    },
+    {
+      "id": 6,
+      "kind": "output",
+      "activation": null
+    },
+    {
+      "id": 18,
+      "kind": "hidden",
+      "activation": "tanh"
+    }
+  ],
+  "connections": [
+    {
+      "innovation": 0,
+      "src": 0,
+      "dst": 6,
+      "weight": -0.7390117789211003,
+      "enabled": false
+    },
+    {
+      "innovation": 1,
+      "src": 1,
+      "dst": 6,
+      "weight": 0.06282678246498108,
+      "enabled": true
+    },
+    {
+      "innovation": 2,
+      "src": 2,
+      "dst": 6,
+      "weight": -0.10904286801815033,
+      "enabled": true
+    },
+    {
+      "innovation": 3,
+      "src": 3,
+      "dst": 6,
+      "weight": 0.11408241093158722,
+      "enabled": true
+    },
+    {
+      "innovation": 4,
+      "src": 4,
+      "dst": 6,
+      "weight": 0.029955299571156502,
+      "enabled": true
+    },
+    {
+      "innovation": 5,
+      "src": 5,
+      "dst": 6,
+      "weight": -0.15275168418884277,
+      "enabled": true
+    },
+    {
+      "innovation": 30,
+      "src": 0,
+      "dst": 18,
+      "weight": 1.2679939270019531,
+      "enabled": true
+    },
+    {
+      "innovation": 31,
+      "src": 18,
+      "dst": 6,
+      "weight": -0.6052957773208618,
+      "enabled": true
+    },
+    {
+      "innovation": 32,
+      "src": 5,
+      "dst": 18,
+      "weight": -0.1541353315114975,
+      "enabled": true
+    }
+  ]
+}

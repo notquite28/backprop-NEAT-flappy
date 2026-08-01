@@ -1,0 +1,233 @@
+{
+  "version": 1,
+  "generation": 26,
+  "fitness": 100.79711418766216,
+  "score": 9.0,
+  "input_count": 5,
+  "output_count": 1,
+  "nodes": [
+    {
+      "id": 0,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 1,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 2,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 3,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 4,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 5,
+      "kind": "bias",
+      "activation": null
+    },
+    {
+      "id": 6,
+      "kind": "output",
+      "activation": null
+    },
+    {
+      "id": 22,
+      "kind": "hidden",
+      "activation": "square"
+    },
+    {
+      "id": 56,
+      "kind": "hidden",
+      "activation": "multiply"
+    },
+    {
+      "id": 82,
+      "kind": "hidden",
+      "activation": "abs"
+    },
+    {
+      "id": 153,
+      "kind": "hidden",
+      "activation": "square"
+    },
+    {
+      "id": 451,
+      "kind": "hidden",
+      "activation": "sin"
+    }
+  ],
+  "connections": [
+    {
+      "innovation": 0,
+      "src": 0,
+      "dst": 6,
+      "weight": -0.8147520772115077,
+      "enabled": true
+    },
+    {
+      "innovation": 1,
+      "src": 1,
+      "dst": 6,
+      "weight": 0.09942262875238823,
+      "enabled": false
+    },
+    {
+      "innovation": 2,
+      "src": 2,
+      "dst": 6,
+      "weight": -0.0018356398272252952,
+      "enabled": true
+    },
+    {
+      "innovation": 3,
+      "src": 3,
+      "dst": 6,
+      "weight": -0.007582200225296902,
+      "enabled": true
+    },
+    {
+      "innovation": 4,
+      "src": 4,
+      "dst": 6,
+      "weight": 0.1372804418994155,
+      "enabled": false
+    },
+    {
+      "innovation": 5,
+      "src": 5,
+      "dst": 6,
+      "weight": -0.03096992928249074,
+      "enabled": true
+    },
+    {
+      "innovation": 39,
+      "src": 1,
+      "dst": 22,
+      "weight": 0.3368836497989162,
+      "enabled": false
+    },
+    {
+      "innovation": 40,
+      "src": 22,
+      "dst": 6,
+      "weight": -0.00496116704358912,
+      "enabled": true
+    },
+    {
+      "innovation": 41,
+      "src": 2,
+      "dst": 22,
+      "weight": 0.2327683429547598,
+      "enabled": false
+    },
+    {
+      "innovation": 124,
+      "src": 5,
+      "dst": 56,
+      "weight": 0.4923493278278007,
+      "enabled": true
+    },
+    {
+      "innovation": 125,
+      "src": 56,
+      "dst": 6,
+      "weight": 0.18353884321878378,
+      "enabled": true
+    },
+    {
+      "innovation": 187,
+      "src": 5,
+      "dst": 22,
+      "weight": 0.23126207096163767,
+      "enabled": true
+    },
+    {
+      "innovation": 188,
+      "src": 4,
+      "dst": 82,
+      "weight": 0.9830169450904963,
+      "enabled": true
+    },
+    {
+      "innovation": 189,
+      "src": 82,
+      "dst": 6,
+      "weight": 0.09200593856377012,
+      "enabled": true
+    },
+    {
+      "innovation": 190,
+      "src": 0,
+      "dst": 56,
+      "weight": -0.06575189666699091,
+      "enabled": true
+    },
+    {
+      "innovation": 345,
+      "src": 2,
+      "dst": 153,
+      "weight": 0.9145124394357728,
+      "enabled": true
+    },
+    {
+      "innovation": 346,
+      "src": 153,
+      "dst": 22,
+      "weight": 0.16893397058033563,
+      "enabled": true
+    },
+    {
+      "innovation": 385,
+      "src": 1,
+      "dst": 82,
+      "weight": 0.18135385575865468,
+      "enabled": true
+    },
+    {
+      "innovation": 420,
+      "src": 82,
+      "dst": 153,
+      "weight": 0.19083972120776702,
+      "enabled": true
+    },
+    {
+      "innovation": 452,
+      "src": 3,
+      "dst": 153,
+      "weight": -0.24302577100637368,
+      "enabled": true
+    },
+    {
+      "innovation": 491,
+      "src": 153,
+      "dst": 6,
+      "weight": -0.09630780571877565,
+      "enabled": true
+    },
+    {
+      "innovation": 1023,
+      "src": 1,
+      "dst": 451,
+      "weight": 1.0,
+      "enabled": true
+    },
+    {
+      "innovation": 1024,
+      "src": 451,
+      "dst": 22,
+      "weight": 0.34004907126625894,
+      "enabled": true
+    }
+  ]
+}

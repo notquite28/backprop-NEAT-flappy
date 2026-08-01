@@ -6,6 +6,7 @@ import pytest
 from neat_flappy.genome import (
     Activation,
     BASE_NODE_IDS,
+    INPUT_COUNT,
     ConnectionGene,
     Genome,
     InnovationStore,
@@ -21,20 +22,21 @@ from neat_flappy.genome import (
 )
 
 
-def test_initial_topology_is_two_inputs_bias_to_linear_output():
+def test_initial_topology_is_every_input_and_bias_to_linear_output():
     store = InnovationStore.base()
     genome = initial_population(store, random.Random(0), 1)[0]
-    assert genome.node_ids == frozenset({0, 1, 2, 3})
-    assert [store.nodes[node_id].kind for node_id in range(4)] == [
-        NodeKind.INPUT,
-        NodeKind.INPUT,
+    assert genome.node_ids == BASE_NODE_IDS
+    assert [
+        store.nodes[node_id].kind for node_id in range(OUTPUT_NODE_ID + 1)
+    ] == [
+        *[NodeKind.INPUT] * INPUT_COUNT,
         NodeKind.BIAS,
         NodeKind.OUTPUT,
     ]
     assert [
         (gene.innovation, gene.src, gene.dst)
         for gene in genome.connections.values()
-    ] == [(0, 0, 3), (1, 1, 3), (2, 2, 3)]
+    ] == [(src, src, OUTPUT_NODE_ID) for src in range(INPUT_COUNT + 1)]
 
 
 def test_add_node_attempt_stops_when_sampled_gene_is_disabled():

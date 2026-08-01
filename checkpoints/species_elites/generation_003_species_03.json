@@ -1,9 +1,9 @@
 {
   "version": 1,
   "generation": 3,
-  "fitness": 156.85035075674665,
-  "score": 13.0,
-  "input_count": 2,
+  "fitness": 8.879850812803426,
+  "score": 0.3333333333333333,
+  "input_count": 5,
   "output_count": 1,
   "nodes": [
     {
@@ -18,35 +18,90 @@
     },
     {
       "id": 2,
-      "kind": "bias",
+      "kind": "input",
       "activation": null
     },
     {
       "id": 3,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 4,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 5,
+      "kind": "bias",
+      "activation": null
+    },
+    {
+      "id": 6,
       "kind": "output",
       "activation": null
+    },
+    {
+      "id": 12,
+      "kind": "hidden",
+      "activation": "relu"
     }
   ],
   "connections": [
     {
       "innovation": 0,
       "src": 0,
-      "dst": 3,
-      "weight": -0.552779874705841,
-      "enabled": true
+      "dst": 6,
+      "weight": 0.029097616604444668,
+      "enabled": false
     },
     {
       "innovation": 1,
       "src": 1,
-      "dst": 3,
-      "weight": 0.18687897377990262,
+      "dst": 6,
+      "weight": 1.1354209882163322,
       "enabled": true
     },
     {
       "innovation": 2,
       "src": 2,
-      "dst": 3,
-      "weight": -0.2034423197322919,
+      "dst": 6,
+      "weight": -0.18809874450315953,
+      "enabled": true
+    },
+    {
+      "innovation": 3,
+      "src": 3,
+      "dst": 6,
+      "weight": -0.7871616557183485,
+      "enabled": true
+    },
+    {
+      "innovation": 4,
+      "src": 4,
+      "dst": 6,
+      "weight": 0.28725402269207745,
+      "enabled": true
+    },
+    {
+      "innovation": 5,
+      "src": 5,
+      "dst": 6,
+      "weight": -0.8093826951761564,
+      "enabled": true
+    },
+    {
+      "innovation": 17,
+      "src": 0,
+      "dst": 12,
+      "weight": 0.9218419178681315,
+      "enabled": true
+    },
+    {
+      "innovation": 18,
+      "src": 12,
+      "dst": 6,
+      "weight": -0.3564321190774068,
       "enabled": true
     }
   ]

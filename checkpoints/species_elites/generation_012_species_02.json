@@ -1,0 +1,160 @@
+{
+  "version": 1,
+  "generation": 12,
+  "fitness": 25.563749402876628,
+  "score": 1.6666666666666667,
+  "input_count": 5,
+  "output_count": 1,
+  "nodes": [
+    {
+      "id": 0,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 1,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 2,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 3,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 4,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 5,
+      "kind": "bias",
+      "activation": null
+    },
+    {
+      "id": 6,
+      "kind": "output",
+      "activation": null
+    },
+    {
+      "id": 46,
+      "kind": "hidden",
+      "activation": "sin"
+    },
+    {
+      "id": 55,
+      "kind": "hidden",
+      "activation": "sigmoid"
+    },
+    {
+      "id": 150,
+      "kind": "hidden",
+      "activation": "square"
+    }
+  ],
+  "connections": [
+    {
+      "innovation": 0,
+      "src": 0,
+      "dst": 6,
+      "weight": -0.7163352141090631,
+      "enabled": true
+    },
+    {
+      "innovation": 1,
+      "src": 1,
+      "dst": 6,
+      "weight": 0.07353499086894234,
+      "enabled": true
+    },
+    {
+      "innovation": 2,
+      "src": 2,
+      "dst": 6,
+      "weight": -0.02999072194825904,
+      "enabled": true
+    },
+    {
+      "innovation": 3,
+      "src": 3,
+      "dst": 6,
+      "weight": 0.007474688219434357,
+      "enabled": false
+    },
+    {
+      "innovation": 4,
+      "src": 4,
+      "dst": 6,
+      "weight": 0.1052674723476194,
+      "enabled": true
+    },
+    {
+      "innovation": 5,
+      "src": 5,
+      "dst": 6,
+      "weight": -0.07843985657655914,
+      "enabled": true
+    },
+    {
+      "innovation": 98,
+      "src": 3,
+      "dst": 46,
+      "weight": 1.0030372693592224,
+      "enabled": true
+    },
+    {
+      "innovation": 99,
+      "src": 46,
+      "dst": 6,
+      "weight": 0.0019218562436309527,
+      "enabled": false
+    },
+    {
+      "innovation": 120,
+      "src": 46,
+      "dst": 55,
+      "weight": 0.9979399805007846,
+      "enabled": true
+    },
+    {
+      "innovation": 121,
+      "src": 55,
+      "dst": 6,
+      "weight": -0.0035536403541621855,
+      "enabled": true
+    },
+    {
+      "innovation": 122,
+      "src": 2,
+      "dst": 46,
+      "weight": -0.10483558530870828,
+      "enabled": true
+    },
+    {
+      "innovation": 341,
+      "src": 46,
+      "dst": 150,
+      "weight": 1.005918272017337,
+      "enabled": true
+    },
+    {
+      "innovation": 342,
+      "src": 150,
+      "dst": 6,
+      "weight": -0.01881115945863515,
+      "enabled": true
+    },
+    {
+      "innovation": 343,
+      "src": 3,
+      "dst": 55,
+      "weight": 0.11441834522763017,
+      "enabled": true
+    }
+  ]
+}

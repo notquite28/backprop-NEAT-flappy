@@ -146,12 +146,53 @@ def test_harmful_gradient_update_rolls_back(monkeypatch, tmp_path):
 
 
 
+
+def test_eval_seed_override_and_pg_pin_are_isolated_from_defaults():
+    cfg = TrainingConfig(eval_seeds=(0,), pg_seed=0)
+    assert cfg.get_eval_seeds() == [0]
+    assert cfg.get_pg_seed(42, 3) == 0
+    # defaults are untouched
+    assert TrainingConfig().get_eval_seeds() == [9000, 9001, 9002]
+    assert TrainingConfig().get_pg_seed(2, 1) == 20001
+    with pytest.raises(ValueError, match="eval_seeds"):
+        TrainingConfig(eval_seeds=()).validate()
+
+
+def test_fixed_seed_mode_routes_overrides_through_paired_backprop(monkeypatch, tmp_path):
+    candidates, store = population_with_fitness(1)
+    seen_eval: list[tuple[int, ...]] = []
+    seen_pg: list[int] = []
+
+    def fake_evaluate(items, _store, seeds, _frames):
+        seen_eval.append(tuple(seeds))
+        for genome in items:
+            genome.fitness = 1.0
+            genome.score = 0
+            genome.frames = 1
+
+    def record_pg(items, _store, _root, seed, _generation, _cycle, _frames):
+        seen_pg.append(int(seed))
+        return 0.0
+
+    monkeypatch.setattr("neat_flappy.training.evaluate_candidates", fake_evaluate)
+    monkeypatch.setattr("neat_flappy.training.policy_gradient_cycle", record_pg)
+    config = TrainingConfig(
+        population_size=5, cluster_count=5, generations=1, max_frames=1,
+        backprop_cycles=3, eval_seeds=(0,), pg_seed=0, checkpoint_dir=tmp_path,
+    )
+    paired_backprop(candidates, store, config, 7, __import__("jax").random.PRNGKey(0))
+    # eval runs pre + post, both pinned to the override, ignoring seed/eval_episodes
+    assert seen_eval == [(0,), (0,)]
+    # every PG cycle uses the pinned layout regardless of generation/cycle
+    assert seen_pg == [0, 0, 0]
+
+
 def base_genome(genome_id, w0, w1, w2):
     """A base-topology genome: output logit w0*obs0 + w1*obs1 + w2."""
     store = InnovationStore.base()
     genes = {
-        innovation: ConnectionGene(innovation, src, 3, 0.0, True)
-        for innovation, (src, _dst) in store.connection_endpoints.items()
+        innovation: ConnectionGene(innovation, src, dst, 0.0, True)
+        for innovation, (src, dst) in store.connection_endpoints.items()
     }
     genes[0].weight = w0
     genes[1].weight = w1

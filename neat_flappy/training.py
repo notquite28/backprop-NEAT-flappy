@@ -22,6 +22,7 @@ from .genome import (
     save_genome,
 )
 from .phenotype import CompiledPhenotype, compile_genome
+from .schedule import pipe_count_for, pipe_schedule
 
 
 CONNECTION_PENALTY_FACTOR = 0.03
@@ -40,6 +41,8 @@ class TrainingConfig:
     eval_episodes: int = 3
     fitness_threshold: float = 100.0
     checkpoint_dir: Path = Path("checkpoints")
+    eval_seeds: tuple[int, ...] | None = None
+    pg_seed: int | None = None
 
     def validate(self) -> None:
         counts = {
@@ -62,6 +65,20 @@ class TrainingConfig:
             raise ValueError("population_size must be at least cluster_count")
         if not math.isfinite(self.fitness_threshold):
             raise ValueError("fitness_threshold must be finite")
+        if self.eval_seeds is not None and not self.eval_seeds:
+            raise ValueError("eval_seeds must contain at least one seed")
+
+    def get_eval_seeds(self) -> list[int]:
+        """Eval layouts. ``eval_seeds`` overrides the derived ``seed+9000+i`` list."""
+        if self.eval_seeds is not None:
+            return list(self.eval_seeds)
+        return [self.seed + 9_000 + index for index in range(self.eval_episodes)]
+
+    def get_pg_seed(self, generation: int, cycle: int) -> int:
+        """PG rollout layout. ``pg_seed`` pins one layout across generations."""
+        if self.pg_seed is not None:
+            return self.pg_seed
+        return self.seed + generation * 10_000 + cycle
 
 
 @dataclass(frozen=True)
@@ -71,6 +88,11 @@ class UpdateStats:
     pre_mean: float
     post_mean: float
     max_abs_weight_delta: float
+
+def _schedule_arrays(seed: int, max_frames: int) -> tuple[jax.Array, jax.Array]:
+    heights, gaps = pipe_schedule(seed, pipe_count_for(max_frames))
+    return jnp.asarray(heights), jnp.asarray(gaps)
+
 
 def complexity_adjusted_fitness(raw_fitness: float, connection_count: int) -> float:
     """Apply Hardmaru's square-root connection-count penalty to a reward."""
@@ -105,7 +127,7 @@ def evaluate_candidates(
     frames = np.zeros(population, np.float64)
     groups, compiled_by_key = _group_candidates(candidates, store)
     for seed in seeds:
-        heights = jnp.asarray(vectorized.pipe_heights(seed, max_frames // 40 + 16))
+        heights, gaps = _schedule_arrays(seed, max_frames)
         for signature, indexes in groups.items():
             compiled = compiled_by_key[signature]
             padded = indexes + [indexes[0]] * (population - len(indexes))
@@ -116,7 +138,7 @@ def evaluate_candidates(
             runner = vectorized.get_runner(
                 signature, compiled.raw_forward, max_frames, sample=False
             )
-            result = runner(weights, heights, jax.random.PRNGKey(0), 0, 0, ids)
+            result = runner(weights, heights, gaps, jax.random.PRNGKey(0), 0, 0, ids)
             count = len(indexes)
             totals[indexes] += np.asarray(result["returns"][:count], dtype=np.float64)
             scores[indexes] += np.asarray(result["scores"][:count], dtype=np.float64)
@@ -173,7 +195,7 @@ def policy_gradient_cycle(
 ) -> float:
     population = len(candidates)
     groups, compiled_by_key = _group_candidates(candidates, store)
-    heights = jnp.asarray(vectorized.pipe_heights(seed, max_frames // 40 + 16))
+    heights, gaps = _schedule_arrays(seed, max_frames)
     largest_delta = 0.0
     for signature, indexes in groups.items():
         compiled = compiled_by_key[signature]
@@ -186,7 +208,7 @@ def policy_gradient_cycle(
         runner = vectorized.get_runner(
             signature, compiled.raw_forward, max_frames, sample=True
         )
-        result = runner(padded_weights, heights, root_key, generation, cycle, ids)
+        result = runner(padded_weights, heights, gaps, root_key, generation, cycle, ids)
         obs_all = np.asarray(result["obs"])
         actions_all = np.asarray(result["actions"])
         rewards_all = np.asarray(result["rewards"])
@@ -243,10 +265,7 @@ def paired_backprop(
     generation: int,
     root_key: jax.Array,
 ) -> UpdateStats:
-    seeds = [
-        config.seed + 9_000 + index
-        for index in range(config.eval_episodes)
-    ]
+    seeds = config.get_eval_seeds()
     evaluate_candidates(candidates, store, seeds, config.max_frames)
     pre_fitness = [float(genome.fitness) for genome in candidates]
     pre_scores = [genome.score for genome in candidates]
@@ -255,7 +274,7 @@ def paired_backprop(
     pre_caches = [dict(genome.rms_cache) for genome in candidates]
     max_delta = 0.0
     for cycle in range(config.backprop_cycles):
-        episode_seed = config.seed + generation * 10_000 + cycle
+        episode_seed = config.get_pg_seed(generation, cycle)
         max_delta = max(
             max_delta,
             policy_gradient_cycle(
@@ -411,7 +430,7 @@ def train(config: TrainingConfig) -> Genome:
     save_genome(
         config.checkpoint_dir / "starting_genome.json", mutable[0], store, 0
     )
-    initial_seeds = [config.seed + 9_000 + index for index in range(config.eval_episodes)]
+    initial_seeds = config.get_eval_seeds()
     evaluate_candidates(mutable, store, initial_seeds, config.max_frames)
     clustering = pam_cluster(mutable, config.cluster_count, rng)
     hall, champions = _select_elites(mutable, clustering)

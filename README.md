@@ -12,59 +12,44 @@ feed-forward compiler, optimizer, checkpoints, and SVG graph renderer.
 
 ## Training result
 
-The default seed-0 run completed generations `0..9`. A three-connection linear
-policy already reached the 1,000-frame episode cap in generation 0. The
-complexity penalty kept that minimal policy as the global champion while the
-population mean improved.
+The task uses randomized pipe gaps (130 to 260 pixels per pipe) and alternating
+gap-center bands. Each bird receives 5 observations. The default trainer
+stalled at 2 pipes because the policy-gradient seed formula differed from the
+evaluation seed formula. A fixed-seed mode (`--eval-seeds` and `--pg-seed`)
+aligns learning and scoring on one layout. A jump-scaled gap floor in the
+schedule removes physically impossible transitions.
 
-| Generation | Global best fitness | Candidate mean fitness | Pipe score | Alive frames |
-| ---: | ---: | ---: | ---: | ---: |
-| 0 | 156.850 | 4.993 | 13.000 | 1,000 |
-| 5 | 156.850 | 31.823 | 13.000 | 1,000 |
-| 8 | 156.850 | 81.293 | 13.000 | 1,000 |
-| 9 | 156.850 | 101.944 | 13.000 | 1,000 |
+| Run | Schedule | Window | Best score | True death frame |
+| ---: | --- | ---: | ---: | ---: |
+| 1 | old | 1000 | 2 | ~214 |
+| 2 | old | 1000 | 17 | 1362 |
+| 3 | old | 3000 | 17 | 1362 |
+| 4 | fixed | 3000 | 66 | 4972 |
 
-Fitness includes the connection-count penalty. Pipe score and alive frames do
-not. Each value uses three deterministic evaluation episodes. A replay with
-another seed can have a different score.
+Run 4 cleared 66 pipes on seed 0 before dying at frame 4972. The death is a
+policy failure, not a geometry failure. Every transition at the death point
+passes the gap-floor check. The bird was trained on 39 pipes (the 3000-frame
+window) and never received gradient signal beyond that.
 
-![Starting genome, global best, and evolved topology](docs/assets/graph-comparison.webp)
+Full timeline, diagnostics, and per-run analysis are in
+[docs/findings.md](docs/findings.md).
 
-The left graph is genome 0 before evaluation or backpropagation. The center
-graph is the global champion, discovered in generation 0. The right graph is
-the most structurally complex retained offspring from generation 9. It has
-four hidden nodes with `square`, `multiply`, `add`, and `add` operators. This sample
-shows that feed-forward topology mutation is active even though the simpler
-generation-0 policy remains the global champion. Green edges have positive
-weights. Red edges have negative weights. Dashed gray edges are disabled.
-
-## Replay progression
-
-These animations use replay seed 0 and the same game state machine:
+### Replay
 
 <table>
   <tr>
-    <th>Original genome</th>
-    <th>Generation 2 offspring</th>
-    <th>Global champion</th>
+    <th>Run 1 champion (2 pipes)</th>
+    <th>Run 2/3 champion (17 pipes)</th>
   </tr>
   <tr>
-    <td><img src="docs/assets/original-genome.gif" alt="Original untrained genome replay" width="300"></td>
-    <td><img src="docs/assets/middle-candidate.gif" alt="Generation 2 representative replay" width="300"></td>
-    <td><img src="docs/assets/final-champion.gif" alt="Final champion replay" width="300"></td>
+    <td><img src="docs/assets/champion-gen29.gif" alt="Run 1 champion replay" width="300"></td>
+    <td><img src="docs/assets/champion-seed0-gen38.gif" alt="Run 2/3 champion replay" width="300"></td>
   </tr>
   <tr>
-    <td>Genome 0 before evaluation or backpropagation</td>
-    <td>Generation 2 offspring: saved fitness 9.411, mean score 0</td>
-    <td>Global champion: saved fitness 156.850, mean score 13</td>
+    <td>Default trainer, old schedule, seed 0</td>
+    <td>Fixed-seed trainer, old schedule, dies at pipe 17</td>
   </tr>
 </table>
-
-The middle replay uses the retained offspring closest to the generation 2
-retained-offspring mean. The final champion reached the 1,000-frame evaluation
-cap. It was discovered in generation 0 and remained the best after nine
-generations. A larger network cannot beat its capped raw return after the
-connection penalty.
 
 ## Long-horizon comparison
 
@@ -140,23 +125,34 @@ over birds. Replay and rendering keep the Pygame state machine.
 
 ## Game state and policy
 
-Each bird receives two normalized `float32` values:
+Each bird receives five normalized `float32` values:
 
 ```math
 o_t =
 \left[
-\frac{(h_t+b_t)/2-y_t}{800},
-\frac{\Delta y_t}{16}
+\frac{c_t-y_t}{800},
+\frac{\Delta y_t}{16},
+\frac{g_t}{800},
+\frac{c^{+}_t-y_t}{800},
+\frac{x_t-230}{600}
 \right]
 ```
 
 where:
 
 - $y_t$ is the bird height.
-- $(h_t+b_t)/2$ is the center of the next pipe gap.
+- $c_t$ is the center of the current pipe gap and $g_t$ is its height.
 - $\Delta y_t$ is the displacement from the preceding physics step.
+- $c^{+}_t$ is the center of the *following* pipe gap.
+- $x_t$ is the current pipe's left edge and 230 is the bird's fixed x.
 
-The two values tell the policy where the gap is and how the bird is moving.
+The first two values are the classic error and error-derivative pair. The last
+three are what make the task resist a linear policy: the safe flap threshold
+scales with $g_t$ rather than being a fixed offset, and the bird must trade its
+position in the current gap against the climb or drop needed to reach the next
+one. Both interactions are products of two inputs, so no weighted sum of $o_t$
+reproduces them.
+
 The network returns one unactivated logit $z_t$. The policy probability is:
 
 ```math
@@ -173,7 +169,7 @@ same seeded pipe schedule:
 
 - Window size: 600 by 800.
 - Floor height: 730.
-- Pipe gap: 200 pixels.
+- Pipe gap: drawn per pipe from `[130, 260]` pixels.
 - Pipe and floor speed: 5 pixels per frame.
 - Bird jump velocity: `-10.5`.
 - One seeded pipe sequence shared by all birds in a candidate batch.
@@ -208,13 +204,16 @@ the same topology:
 
 | Node ID | Kind | Meaning |
 | ---: | --- | --- |
-| 0 | Input | Signed distance from bird to pipe-gap center |
+| 0 | Input | Signed distance from bird to current pipe-gap center |
 | 1 | Input | Vertical bird displacement |
-| 2 | Bias | Constant `1.0` |
-| 3 | Output | Bernoulli action logit |
+| 2 | Input | Current pipe-gap height |
+| 3 | Input | Signed distance from bird to the next pipe-gap center |
+| 4 | Input | Horizontal distance from bird to the current pipe |
+| 5 | Bias | Constant `1.0` |
+| 6 | Output | Bernoulli action logit |
 
-Connections `0..2` connect both inputs and the bias directly to output node 3.
-There are no hidden nodes. Each initial weight is:
+Connections `0..5` connect all five inputs and the bias directly to output
+node 6. There are no hidden nodes. Each initial weight is:
 
 ```math
 w \sim \mathcal{N}(0,0.25^2) + \mathcal{N}(0,0.005^2)

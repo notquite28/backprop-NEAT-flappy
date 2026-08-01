@@ -1,9 +1,8 @@
-import random
-
 import numpy as np
 import pytest
 
 from neat_flappy.game import Bird, FlappyEpisode, FLOOR, Pipe, load_assets
+from neat_flappy.schedule import OBSERVATION_COUNT
 
 
 def test_jump_move_and_animation_are_state_updates():
@@ -34,16 +33,28 @@ def test_pass_reward_and_terminal_floor_reward_order():
     episode = FlappyEpisode(1, 3, 10)
     pipe = episode.pipes[0]
     pipe.height = 150
+    pipe.gap = 200
     pipe.top = pipe.height - pipe.assets.pipe_top.get_height()
-    pipe.bottom = pipe.height + pipe.GAP
+    pipe.bottom = pipe.height + pipe.gap
     pipe.x = 234
     episode.birds[0].y = 250
     start = episode.prepare_frame()
     assert start.observations.dtype == np.float32
-    assert start.observations.shape == (1, 2)
+    assert start.observations.shape == (1, OBSERVATION_COUNT)
+    following = episode.heights[1] + episode.gaps[1] / 2.0
     np.testing.assert_allclose(
         start.observations[0],
-        np.asarray([-1.5 / 800.0, 1.5 / 16.0], dtype=np.float32),
+        np.asarray(
+            [
+                -1.5 / 800.0,
+                1.5 / 16.0,
+                200.0 / 800.0,
+                (following - 251.5) / 800.0,
+                (234 - 230) / 600.0,
+            ],
+            dtype=np.float32,
+        ),
+        rtol=1e-6,
     )
     end = episode.step([False])
     assert end.rewards[0] == pytest.approx(5.1)
@@ -61,8 +72,9 @@ def test_score_cap_terminates_surviving_birds():
     episode = FlappyEpisode(1, 3, max_frames=100, max_score=1)
     pipe = episode.pipes[0]
     pipe.height = 150
+    pipe.gap = 200
     pipe.top = pipe.height - pipe.assets.pipe_top.get_height()
-    pipe.bottom = pipe.height + pipe.GAP
+    pipe.bottom = pipe.height + pipe.gap
     pipe.x = 234
     episode.birds[0].y = 250
 
@@ -80,6 +92,25 @@ def test_score_cap_terminates_surviving_birds():
 
 def test_pixel_mask_collision():
     bird = Bird(230, 350)
-    pipe = Pipe(230, random.Random(0), load_assets())
+    pipe = Pipe(230, 150, 200, 0, load_assets())
     pipe.bottom = 350
     assert pipe.collide(bird)
+
+
+def test_gap_size_varies_and_centers_alternate_bands():
+    episode = FlappyEpisode(1, 5, 400)
+    assert len(set(episode.gaps.tolist())) > 1
+    centers = episode.heights + episode.gaps / 2.0
+    even = centers[0:20:2]
+    odd = centers[1:20:2]
+    assert even.max() < odd.min()
+
+
+def test_observation_exposes_gap_size_and_next_gap_center():
+    episode = FlappyEpisode(1, 5, 400)
+    pipe = episode.pipes[0]
+    observations = episode.prepare_frame().observations[0]
+    bird = episode.birds[0]
+    following = episode.heights[1] + episode.gaps[1] / 2.0
+    assert observations[2] == np.float32(pipe.gap / 800.0)
+    assert observations[3] == np.float32((following - bird.y) / 800.0)

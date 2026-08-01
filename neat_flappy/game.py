@@ -4,11 +4,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-import random
 from typing import Callable, Sequence
 
 import numpy as np
 import pygame
+
+from .schedule import OBSERVATION_COUNT, pipe_count_for, pipe_schedule
 
 WIN_WIDTH = 600
 WIN_HEIGHT = 800
@@ -106,15 +107,23 @@ class Bird:
 
 
 class Pipe:
-    GAP = 200
     VEL = 5
 
-    def __init__(self, x: int, rng: random.Random, assets: Assets | None = None) -> None:
+    def __init__(
+        self,
+        x: int,
+        height: float,
+        gap: float,
+        index: int,
+        assets: Assets | None = None,
+    ) -> None:
         self.assets = assets or load_assets()
         self.x = x
-        self.height = rng.randrange(50, 450)
+        self.index = index
+        self.height = float(height)
+        self.gap = float(gap)
         self.top = self.height - self.assets.pipe_top.get_height()
-        self.bottom = self.height + self.GAP
+        self.bottom = self.height + self.gap
         self.passed = False
         self.top_mask = pygame.mask.from_surface(self.assets.pipe_top)
         self.bottom_mask = pygame.mask.from_surface(self.assets.pipe)
@@ -194,12 +203,14 @@ class FlappyEpisode:
         if max_score is not None and max_score <= 0:
             raise ValueError("max_score must be positive")
         self.assets = load_assets()
-        self.rng = random.Random(seed)
         self.max_frames = max_frames
         self.max_score = max_score
+        count = pipe_count_for(max_frames if max_score is None else max_frames)
+        self.heights, self.gaps = pipe_schedule(seed, count)
         self.birds = {i: Bird(230, 350, self.assets) for i in range(bird_count)}
         self.base = Base(FLOOR, self.assets)
-        self.pipes = [Pipe(700, self.rng, self.assets)]
+        self.pipes = [Pipe(700, self.heights[0], self.gaps[0], 0, self.assets)]
+        self.spawn_index = 1
         self.frame = 0
         self.score = 0
         self._prepared: FrameStart | None = None
@@ -226,14 +237,19 @@ class FlappyEpisode:
             raise RuntimeError("frame is already prepared")
         ids = tuple(self.birds)
         pipe = self.pipes[self._pipe_index()]
-        observations = np.empty((len(ids), 2), dtype=np.float32)
+        gap_center = pipe.height + pipe.gap / 2.0
+        following = min(pipe.index + 1, len(self.heights) - 1)
+        next_center = float(self.heights[following] + self.gaps[following] / 2.0)
+        observations = np.empty((len(ids), OBSERVATION_COUNT), dtype=np.float32)
         for row, bird_id in enumerate(ids):
             bird = self.birds[bird_id]
             bird.move()
-            gap_center = (pipe.height + pipe.bottom) / 2.0
             observations[row] = (
                 (gap_center - bird.y) / WIN_HEIGHT,
                 bird.last_displacement / 16.0,
+                pipe.gap / WIN_HEIGHT,
+                (next_center - bird.y) / WIN_HEIGHT,
+                (pipe.x - bird.x) / WIN_WIDTH,
             )
         self._prepared = FrameStart(ids, observations, np.full(len(ids), 0.1, np.float32))
         return self._prepared
@@ -275,7 +291,11 @@ class FlappyEpisode:
             for row, bird_id in enumerate(start.bird_ids):
                 if bird_id in self.birds:
                     rewards[row] += 5.0
-            self.pipes.append(Pipe(WIN_WIDTH, self.rng, self.assets))
+            index = min(self.spawn_index, len(self.heights) - 1)
+            self.pipes.append(
+                Pipe(WIN_WIDTH, self.heights[index], self.gaps[index], index, self.assets)
+            )
+            self.spawn_index += 1
 
         self.pipes = [pipe for pipe in self.pipes if pipe.x + pipe.width >= 0]
         for bird_id, bird in list(self.birds.items()):

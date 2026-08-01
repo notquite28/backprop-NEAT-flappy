@@ -28,6 +28,19 @@ def build_parser() -> argparse.ArgumentParser:
     train.add_argument("--eval-episodes", type=positive_int, default=3)
     train.add_argument("--fitness-threshold", type=float, default=100.0)
     train.add_argument("--checkpoint-dir", type=Path, default=Path("checkpoints"))
+    train.add_argument(
+        "--eval-seeds",
+        type=int,
+        nargs="*",
+        default=None,
+        help="fixed eval layouts; overrides the derived seed+9000+i list",
+    )
+    train.add_argument(
+        "--pg-seed",
+        type=int,
+        default=None,
+        help="pin policy-gradient rollouts to one layout",
+    )
 
     replay = subcommands.add_parser("replay", help="replay a saved genome")
     replay.add_argument("--genome", type=Path, required=True)
@@ -61,6 +74,8 @@ def run_train(arguments: argparse.Namespace) -> int:
         backprop_cycles=arguments.backprop_cycles,
         eval_episodes=arguments.eval_episodes,
         fitness_threshold=arguments.fitness_threshold,
+        eval_seeds=tuple(arguments.eval_seeds) if arguments.eval_seeds else None,
+        pg_seed=arguments.pg_seed,
         checkpoint_dir=arguments.checkpoint_dir,
     )
     train(config)

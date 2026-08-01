@@ -1,9 +1,9 @@
 {
   "version": 1,
   "generation": 2,
-  "fitness": 156.85035075674665,
-  "score": 13.0,
-  "input_count": 2,
+  "fitness": 14.842641993989705,
+  "score": 0.6666666666666666,
+  "input_count": 5,
   "output_count": 1,
   "nodes": [
     {
@@ -18,11 +18,26 @@
     },
     {
       "id": 2,
-      "kind": "bias",
+      "kind": "input",
       "activation": null
     },
     {
       "id": 3,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 4,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 5,
+      "kind": "bias",
+      "activation": null
+    },
+    {
+      "id": 6,
       "kind": "output",
       "activation": null
     }
@@ -31,22 +46,43 @@
     {
       "innovation": 0,
       "src": 0,
-      "dst": 3,
-      "weight": -0.5650491479984984,
+      "dst": 6,
+      "weight": -0.7358648361429547,
       "enabled": true
     },
     {
       "innovation": 1,
       "src": 1,
-      "dst": 3,
-      "weight": 0.18325115552747553,
+      "dst": 6,
+      "weight": 0.08070104158034799,
       "enabled": true
     },
     {
       "innovation": 2,
       "src": 2,
-      "dst": 3,
-      "weight": -0.18229454022097555,
+      "dst": 6,
+      "weight": -0.02739478915605958,
+      "enabled": true
+    },
+    {
+      "innovation": 3,
+      "src": 3,
+      "dst": 6,
+      "weight": -0.008288310889354585,
+      "enabled": true
+    },
+    {
+      "innovation": 4,
+      "src": 4,
+      "dst": 6,
+      "weight": 0.11377312152522785,
+      "enabled": true
+    },
+    {
+      "innovation": 5,
+      "src": 5,
+      "dst": 6,
+      "weight": -0.07795466240828089,
       "enabled": true
     }
   ]

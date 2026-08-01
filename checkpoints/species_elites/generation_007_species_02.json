@@ -1,9 +1,9 @@
 {
   "version": 1,
   "generation": 7,
-  "fitness": 56.23749015436944,
-  "score": 4.333333333333333,
-  "input_count": 2,
+  "fitness": 25.443654223738125,
+  "score": 1.6666666666666667,
+  "input_count": 5,
   "output_count": 1,
   "nodes": [
     {
@@ -18,106 +18,149 @@
     },
     {
       "id": 2,
-      "kind": "bias",
+      "kind": "input",
       "activation": null
     },
     {
       "id": 3,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 4,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 5,
+      "kind": "bias",
+      "activation": null
+    },
+    {
+      "id": 6,
       "kind": "output",
       "activation": null
     },
     {
-      "id": 8,
+      "id": 18,
       "kind": "hidden",
-      "activation": "square"
+      "activation": "tanh"
     },
     {
-      "id": 51,
+      "id": 71,
       "kind": "hidden",
-      "activation": "multiply"
+      "activation": "sigmoid"
     },
     {
-      "id": 52,
+      "id": 111,
       "kind": "hidden",
-      "activation": "add"
+      "activation": "tanh"
     }
   ],
   "connections": [
     {
       "innovation": 0,
       "src": 0,
-      "dst": 3,
-      "weight": -1.0575093868620538,
+      "dst": 6,
+      "weight": -0.301872581243515,
       "enabled": true
     },
     {
       "innovation": 1,
       "src": 1,
-      "dst": 3,
-      "weight": 0.0893463303714826,
+      "dst": 6,
+      "weight": 0.19033078849315643,
       "enabled": true
     },
     {
       "innovation": 2,
       "src": 2,
-      "dst": 3,
-      "weight": 0.6205344200134277,
+      "dst": 6,
+      "weight": 0.16581672430038452,
       "enabled": true
     },
     {
-      "innovation": 12,
+      "innovation": 3,
+      "src": 3,
+      "dst": 6,
+      "weight": -1.001778244972229,
+      "enabled": true
+    },
+    {
+      "innovation": 4,
+      "src": 4,
+      "dst": 6,
+      "weight": 0.11185592067804463,
+      "enabled": false
+    },
+    {
+      "innovation": 5,
+      "src": 5,
+      "dst": 6,
+      "weight": -0.18311041593551636,
+      "enabled": true
+    },
+    {
+      "innovation": 30,
       "src": 0,
-      "dst": 8,
-      "weight": 1.4412044714682077,
+      "dst": 18,
+      "weight": 2.2679200172424316,
       "enabled": true
     },
     {
-      "innovation": 13,
-      "src": 8,
-      "dst": 3,
-      "weight": -1.276648292369802,
+      "innovation": 31,
+      "src": 18,
+      "dst": 6,
+      "weight": -2.43558669090271,
       "enabled": true
     },
     {
-      "innovation": 14,
-      "src": 2,
-      "dst": 8,
-      "weight": 1.0037009287240293,
+      "innovation": 32,
+      "src": 5,
+      "dst": 18,
+      "weight": 0.23843157291412354,
       "enabled": true
     },
     {
-      "innovation": 107,
-      "src": 2,
-      "dst": 51,
-      "weight": 1.1427891713241713,
+      "innovation": 132,
+      "src": 3,
+      "dst": 18,
+      "weight": -0.39037230610847473,
       "enabled": true
     },
     {
-      "innovation": 108,
-      "src": 51,
-      "dst": 3,
-      "weight": 0.4976556846737406,
+      "innovation": 158,
+      "src": 4,
+      "dst": 71,
+      "weight": 0.9337220191955566,
       "enabled": true
     },
     {
-      "innovation": 109,
-      "src": 1,
-      "dst": 52,
-      "weight": 0.4884921059091386,
+      "innovation": 159,
+      "src": 71,
+      "dst": 6,
+      "weight": 0.2408110797405243,
       "enabled": true
     },
     {
-      "innovation": 110,
-      "src": 52,
-      "dst": 3,
-      "weight": -0.5997158121694351,
-      "enabled": true
-    },
-    {
-      "innovation": 149,
+      "innovation": 250,
       "src": 0,
-      "dst": 52,
-      "weight": 1.3568191409341706,
+      "dst": 111,
+      "weight": 2.201068162918091,
+      "enabled": true
+    },
+    {
+      "innovation": 251,
+      "src": 111,
+      "dst": 18,
+      "weight": 2.851595163345337,
+      "enabled": true
+    },
+    {
+      "innovation": 301,
+      "src": 4,
+      "dst": 111,
+      "weight": -0.2005511075258255,
       "enabled": true
     }
   ]

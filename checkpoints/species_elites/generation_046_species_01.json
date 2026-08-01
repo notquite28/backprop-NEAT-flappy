@@ -1,0 +1,141 @@
+{
+  "version": 1,
+  "generation": 46,
+  "fitness": 14.101237193168535,
+  "score": 0.6666666666666666,
+  "input_count": 5,
+  "output_count": 1,
+  "nodes": [
+    {
+      "id": 0,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 1,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 2,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 3,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 4,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 5,
+      "kind": "bias",
+      "activation": null
+    },
+    {
+      "id": 6,
+      "kind": "output",
+      "activation": null
+    },
+    {
+      "id": 12,
+      "kind": "hidden",
+      "activation": "relu"
+    },
+    {
+      "id": 99,
+      "kind": "hidden",
+      "activation": "relu"
+    }
+  ],
+  "connections": [
+    {
+      "innovation": 0,
+      "src": 0,
+      "dst": 6,
+      "weight": -1.729060880984736,
+      "enabled": true
+    },
+    {
+      "innovation": 1,
+      "src": 1,
+      "dst": 6,
+      "weight": 1.6179066630327095,
+      "enabled": true
+    },
+    {
+      "innovation": 2,
+      "src": 2,
+      "dst": 6,
+      "weight": -0.1622385037332088,
+      "enabled": true
+    },
+    {
+      "innovation": 3,
+      "src": 3,
+      "dst": 6,
+      "weight": -1.9064100976405036,
+      "enabled": true
+    },
+    {
+      "innovation": 4,
+      "src": 4,
+      "dst": 6,
+      "weight": 0.4127287097964495,
+      "enabled": true
+    },
+    {
+      "innovation": 5,
+      "src": 5,
+      "dst": 6,
+      "weight": -0.7572804660406908,
+      "enabled": true
+    },
+    {
+      "innovation": 17,
+      "src": 0,
+      "dst": 12,
+      "weight": 2.4294163324468774,
+      "enabled": true
+    },
+    {
+      "innovation": 18,
+      "src": 12,
+      "dst": 6,
+      "weight": -1.0607880414906907,
+      "enabled": true
+    },
+    {
+      "innovation": 113,
+      "src": 5,
+      "dst": 12,
+      "weight": 0.34399931943421885,
+      "enabled": true
+    },
+    {
+      "innovation": 220,
+      "src": 4,
+      "dst": 99,
+      "weight": 0.3420186102365079,
+      "enabled": true
+    },
+    {
+      "innovation": 221,
+      "src": 99,
+      "dst": 6,
+      "weight": 0.17639218456926803,
+      "enabled": true
+    },
+    {
+      "innovation": 222,
+      "src": 2,
+      "dst": 99,
+      "weight": -0.5029396563190884,
+      "enabled": true
+    }
+  ]
+}

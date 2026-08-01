@@ -1,9 +1,9 @@
 {
   "version": 1,
   "generation": 2,
-  "fitness": 156.85035075674665,
-  "score": 13.0,
-  "input_count": 2,
+  "fitness": 16.86866450433226,
+  "score": 1.0,
+  "input_count": 5,
   "output_count": 1,
   "nodes": [
     {
@@ -18,35 +18,90 @@
     },
     {
       "id": 2,
-      "kind": "bias",
+      "kind": "input",
       "activation": null
     },
     {
       "id": 3,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 4,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 5,
+      "kind": "bias",
+      "activation": null
+    },
+    {
+      "id": 6,
       "kind": "output",
       "activation": null
+    },
+    {
+      "id": 44,
+      "kind": "hidden",
+      "activation": "relu"
     }
   ],
   "connections": [
     {
       "innovation": 0,
       "src": 0,
-      "dst": 3,
-      "weight": -0.5642741300557454,
+      "dst": 6,
+      "weight": -0.7475395616860122,
       "enabled": true
     },
     {
       "innovation": 1,
       "src": 1,
-      "dst": 3,
-      "weight": 0.18383428687798695,
-      "enabled": true
+      "dst": 6,
+      "weight": 0.06024630352896407,
+      "enabled": false
     },
     {
       "innovation": 2,
       "src": 2,
-      "dst": 3,
-      "weight": -0.18779061361177865,
+      "dst": 6,
+      "weight": -0.01751301665333679,
+      "enabled": true
+    },
+    {
+      "innovation": 3,
+      "src": 3,
+      "dst": 6,
+      "weight": -0.004756057684511384,
+      "enabled": true
+    },
+    {
+      "innovation": 4,
+      "src": 4,
+      "dst": 6,
+      "weight": 0.11377312152522785,
+      "enabled": true
+    },
+    {
+      "innovation": 5,
+      "src": 5,
+      "dst": 6,
+      "weight": -0.0771232036741512,
+      "enabled": true
+    },
+    {
+      "innovation": 94,
+      "src": 1,
+      "dst": 44,
+      "weight": 0.9938624605992752,
+      "enabled": true
+    },
+    {
+      "innovation": 95,
+      "src": 44,
+      "dst": 6,
+      "weight": 0.05586407363416066,
       "enabled": true
     }
   ]

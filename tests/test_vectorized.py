@@ -6,27 +6,31 @@ import numpy as np
 from neat_flappy import vectorized
 from neat_flappy.genome import (
     BASE_NODE_IDS,
+    BIAS_NODE_ID,
     ConnectionGene,
     Genome,
     InnovationStore,
 )
 from neat_flappy.phenotype import compile_genome
+from neat_flappy.schedule import OBSERVATION_COUNT, pipe_count_for, pipe_schedule
 
 
 def policy_genome(w0: float, w1: float, w2: float):
     """A base-topology genome with output logit w0*obs0 + w1*obs1 + w2.
 
-    Innovations 0, 1, 2 feed inputs 0, 1 and the bias into the output with a
-    sum aggregation, so the weights map directly onto the observation terms.
+    Innovation i feeds input i into the output with a sum aggregation and the
+    bias is the last one, so these three weights map onto the error, velocity,
+    and bias terms. The remaining inputs stay at weight zero, which keeps this
+    a pure PD probe of the engine's reward and collision accounting.
     """
     store = InnovationStore.base()
     genes = {
-        innovation: ConnectionGene(innovation, src, 3, 0.0, True)
-        for innovation, (src, _dst) in store.connection_endpoints.items()
+        innovation: ConnectionGene(innovation, src, dst, 0.0, True)
+        for innovation, (src, dst) in store.connection_endpoints.items()
     }
     genes[0].weight = w0
     genes[1].weight = w1
-    genes[2].weight = w2
+    genes[BIAS_NODE_ID].weight = w2
     genome = Genome(
         0,
         BASE_NODE_IDS,
@@ -39,12 +43,13 @@ def policy_genome(w0: float, w1: float, w2: float):
 def run(genome, store, max_frames, seed=0, sample=False, root_key=None):
     compiled = compile_genome(genome, store)
     weights = jnp.asarray(compiled.weights_for(genome))[None]
-    heights = jnp.asarray(vectorized.pipe_heights(seed, max_frames // 40 + 16))
+    heights, gaps = pipe_schedule(seed, pipe_count_for(max_frames))
     key = jax.random.PRNGKey(0) if root_key is None else root_key
     return vectorized.run_episodes(
         weights,
         compiled.raw_forward,
-        heights,
+        jnp.asarray(heights),
+        jnp.asarray(gaps),
         max_frames,
         sample,
         key,
@@ -97,7 +102,7 @@ def test_trajectory_shapes_and_alive_prefix():
     genome, store = policy_genome(0.0, 0.0, 0.0)
     max_frames = 80
     result = run(genome, store, max_frames)
-    assert result["obs"].shape == (max_frames, 1, 2)
+    assert result["obs"].shape == (max_frames, 1, OBSERVATION_COUNT)
     assert result["actions"].shape == (max_frames, 1)
     assert result["alive"].shape == (max_frames, 1)
     alive = np.asarray(result["alive"][:, 0])
@@ -112,3 +117,42 @@ def test_sampling_is_repeatable_for_identical_keys():
     first = run(genome, store, 60, sample=True, root_key=key)
     second = run(genome, store, 60, sample=True, root_key=key)
     np.testing.assert_array_equal(first["actions"], second["actions"])
+
+
+def test_collision_uses_each_pipe_own_gap():
+    """Widening only the gap lets an otherwise identical run survive longer."""
+    # Hovers toward the gap center so the bird is still alive when the first
+    # pipe reaches it around frame 73; a free-falling bird would hit the floor
+    # near frame 24 and never test the gap at all.
+    genome, store = policy_genome(-80.0, 0.5, 0.0)
+    compiled = compile_genome(genome, store)
+    weights = jnp.asarray(compiled.weights_for(genome))[None]
+    heights = jnp.asarray([300.0, 300.0])
+    max_frames = 200
+
+    def survives(gap):
+        result = vectorized.run_episodes(
+            weights,
+            compiled.raw_forward,
+            heights,
+            jnp.asarray([gap, gap]),
+            max_frames,
+            False,
+            jax.random.PRNGKey(0),
+            0,
+            0,
+            jnp.asarray([0], dtype=jnp.int32),
+        )
+        return int(result["frames"][0])
+
+    assert survives(260.0) > survives(130.0)
+
+
+def test_observation_carries_gap_size_and_lookahead():
+    genome, store = policy_genome(0.0, 0.0, 0.0)
+    result = run(genome, store, 30)
+    obs = np.asarray(result["obs"][0, 0])
+    heights, gaps = pipe_schedule(0, pipe_count_for(30))
+    assert obs.shape == (OBSERVATION_COUNT,)
+    assert obs[2] == pytest.approx(gaps[0] / 800.0, abs=1e-6)
+    assert obs[3] != obs[0]

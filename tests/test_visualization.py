@@ -1,6 +1,12 @@
 import random
 
-from neat_flappy.genome import InnovationStore, add_node, initial_population, save_genome
+from neat_flappy.genome import (
+    INPUT_COUNT,
+    InnovationStore,
+    add_node,
+    initial_population,
+    save_genome,
+)
 from neat_flappy.visualization import render_comparison
 
 
@@ -17,7 +23,12 @@ def test_render_comparison_contains_start_and_champion_graphs(tmp_path):
     svg = output_path.read_text()
     assert "Starting genome · seed 3 · genome 0" in svg
     assert "Saved genome · generation 4 · fitness 12.500 · score 2.000" in svg
-    assert svg.count("4 nodes · 3 enabled / 3 total connections") == 2
+    base_nodes = INPUT_COUNT + 2
+    base_connections = INPUT_COUNT + 1
+    assert svg.count(
+        f"{base_nodes} nodes · {base_connections} enabled "
+        f"/ {base_connections} total connections"
+    ) == 2
     assert svg.count("gap Δy") == 2
     assert svg.count("velocity") == 2
     assert svg.count("i0 ·") == 2
@@ -45,6 +56,9 @@ def test_render_comparison_shows_hidden_activation_and_disabled_split(tmp_path):
     activation = store.nodes[hidden_id].activation.value
     assert f"#{hidden_id}" in svg
     assert activation in svg
-    assert "5 nodes · 4 enabled / 5 total connections" in svg
+    assert (
+        f"{INPUT_COUNT + 3} nodes · {INPUT_COUNT + 2} enabled "
+        f"/ {INPUT_COUNT + 3} total connections"
+    ) in svg
     assert 'stroke-dasharray="7 5"' in svg
     assert "arrow-disabled" in svg

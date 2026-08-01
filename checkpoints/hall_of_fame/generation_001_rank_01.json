@@ -1,9 +1,9 @@
 {
   "version": 1,
   "generation": 1,
-  "fitness": 156.85035075674665,
-  "score": 13.0,
-  "input_count": 2,
+  "fitness": 14.687106648714222,
+  "score": 0.6666666666666666,
+  "input_count": 5,
   "output_count": 1,
   "nodes": [
     {
@@ -18,35 +18,90 @@
     },
     {
       "id": 2,
-      "kind": "bias",
+      "kind": "input",
       "activation": null
     },
     {
       "id": 3,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 4,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 5,
+      "kind": "bias",
+      "activation": null
+    },
+    {
+      "id": 6,
       "kind": "output",
       "activation": null
+    },
+    {
+      "id": 26,
+      "kind": "hidden",
+      "activation": "multiply"
     }
   ],
   "connections": [
     {
       "innovation": 0,
       "src": 0,
-      "dst": 3,
-      "weight": -0.5603810741042623,
-      "enabled": true
+      "dst": 6,
+      "weight": -0.7329948431093698,
+      "enabled": false
     },
     {
       "innovation": 1,
       "src": 1,
-      "dst": 3,
-      "weight": 0.17240676099358232,
+      "dst": 6,
+      "weight": 0.07984568365798635,
       "enabled": true
     },
     {
       "innovation": 2,
       "src": 2,
-      "dst": 3,
-      "weight": -0.18744056774693257,
+      "dst": 6,
+      "weight": -0.025568489901527186,
+      "enabled": true
+    },
+    {
+      "innovation": 3,
+      "src": 3,
+      "dst": 6,
+      "weight": -0.006404914719134567,
+      "enabled": true
+    },
+    {
+      "innovation": 4,
+      "src": 4,
+      "dst": 6,
+      "weight": 0.10790531115706059,
+      "enabled": true
+    },
+    {
+      "innovation": 5,
+      "src": 5,
+      "dst": 6,
+      "weight": -0.07511669695381894,
+      "enabled": true
+    },
+    {
+      "innovation": 48,
+      "src": 0,
+      "dst": 26,
+      "weight": 0.9957504275464203,
+      "enabled": true
+    },
+    {
+      "innovation": 49,
+      "src": 26,
+      "dst": 6,
+      "weight": -0.7304590968395186,
       "enabled": true
     }
   ]

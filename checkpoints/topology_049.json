@@ -1,0 +1,205 @@
+{
+  "version": 1,
+  "generation": 49,
+  "fitness": 16.095286154616826,
+  "score": 1.0,
+  "input_count": 5,
+  "output_count": 1,
+  "nodes": [
+    {
+      "id": 0,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 1,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 2,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 3,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 4,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 5,
+      "kind": "bias",
+      "activation": null
+    },
+    {
+      "id": 6,
+      "kind": "output",
+      "activation": null
+    },
+    {
+      "id": 22,
+      "kind": "hidden",
+      "activation": "square"
+    },
+    {
+      "id": 163,
+      "kind": "hidden",
+      "activation": "sin"
+    },
+    {
+      "id": 874,
+      "kind": "hidden",
+      "activation": "multiply"
+    },
+    {
+      "id": 887,
+      "kind": "hidden",
+      "activation": "add"
+    },
+    {
+      "id": 906,
+      "kind": "hidden",
+      "activation": "abs"
+    }
+  ],
+  "connections": [
+    {
+      "innovation": 0,
+      "src": 0,
+      "dst": 6,
+      "weight": -1.0620328213219508,
+      "enabled": true
+    },
+    {
+      "innovation": 1,
+      "src": 1,
+      "dst": 6,
+      "weight": 0.07612295201204564,
+      "enabled": false
+    },
+    {
+      "innovation": 2,
+      "src": 2,
+      "dst": 6,
+      "weight": -0.01705866306395282,
+      "enabled": true
+    },
+    {
+      "innovation": 3,
+      "src": 3,
+      "dst": 6,
+      "weight": 0.022047637186140345,
+      "enabled": true
+    },
+    {
+      "innovation": 4,
+      "src": 4,
+      "dst": 6,
+      "weight": 0.1270230919213964,
+      "enabled": true
+    },
+    {
+      "innovation": 5,
+      "src": 5,
+      "dst": 6,
+      "weight": -0.043084601547206294,
+      "enabled": true
+    },
+    {
+      "innovation": 39,
+      "src": 1,
+      "dst": 22,
+      "weight": 0.49104019101858637,
+      "enabled": true
+    },
+    {
+      "innovation": 40,
+      "src": 22,
+      "dst": 6,
+      "weight": 0.005823542096659548,
+      "enabled": true
+    },
+    {
+      "innovation": 41,
+      "src": 2,
+      "dst": 22,
+      "weight": 0.7353744812237578,
+      "enabled": false
+    },
+    {
+      "innovation": 372,
+      "src": 0,
+      "dst": 163,
+      "weight": 0.9842624502275277,
+      "enabled": true
+    },
+    {
+      "innovation": 373,
+      "src": 163,
+      "dst": 6,
+      "weight": -1.0545456917673517,
+      "enabled": true
+    },
+    {
+      "innovation": 374,
+      "src": 163,
+      "dst": 22,
+      "weight": -0.12443670012081551,
+      "enabled": true
+    },
+    {
+      "innovation": 478,
+      "src": 4,
+      "dst": 163,
+      "weight": 0.198678241066157,
+      "enabled": true
+    },
+    {
+      "innovation": 1906,
+      "src": 4,
+      "dst": 874,
+      "weight": 1.0090128653730381,
+      "enabled": true
+    },
+    {
+      "innovation": 1907,
+      "src": 874,
+      "dst": 6,
+      "weight": 0.13160874201299086,
+      "enabled": true
+    },
+    {
+      "innovation": 1933,
+      "src": 163,
+      "dst": 887,
+      "weight": 1.000006597055064,
+      "enabled": true
+    },
+    {
+      "innovation": 1934,
+      "src": 887,
+      "dst": 22,
+      "weight": -0.1390441600246702,
+      "enabled": true
+    },
+    {
+      "innovation": 1973,
+      "src": 2,
+      "dst": 906,
+      "weight": 1.0059640774430871,
+      "enabled": true
+    },
+    {
+      "innovation": 1974,
+      "src": 906,
+      "dst": 22,
+      "weight": 0.7301053019049758,
+      "enabled": true
+    }
+  ]
+}

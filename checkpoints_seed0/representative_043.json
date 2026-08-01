@@ -1,0 +1,115 @@
+{
+  "version": 1,
+  "generation": 43,
+  "fitness": 82.6601150932662,
+  "score": 7.0,
+  "input_count": 5,
+  "output_count": 1,
+  "nodes": [
+    {
+      "id": 0,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 1,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 2,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 3,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 4,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 5,
+      "kind": "bias",
+      "activation": null
+    },
+    {
+      "id": 6,
+      "kind": "output",
+      "activation": null
+    },
+    {
+      "id": 842,
+      "kind": "hidden",
+      "activation": "add"
+    }
+  ],
+  "connections": [
+    {
+      "innovation": 0,
+      "src": 0,
+      "dst": 6,
+      "weight": -0.7444290538594681,
+      "enabled": true
+    },
+    {
+      "innovation": 1,
+      "src": 1,
+      "dst": 6,
+      "weight": 0.06465527290953807,
+      "enabled": true
+    },
+    {
+      "innovation": 2,
+      "src": 2,
+      "dst": 6,
+      "weight": -0.03202716476160252,
+      "enabled": true
+    },
+    {
+      "innovation": 3,
+      "src": 3,
+      "dst": 6,
+      "weight": -0.017758571677100307,
+      "enabled": false
+    },
+    {
+      "innovation": 4,
+      "src": 4,
+      "dst": 6,
+      "weight": 0.11155254256274179,
+      "enabled": true
+    },
+    {
+      "innovation": 5,
+      "src": 5,
+      "dst": 6,
+      "weight": -0.08750137714552055,
+      "enabled": true
+    },
+    {
+      "innovation": 1858,
+      "src": 3,
+      "dst": 842,
+      "weight": 0.9959281159955296,
+      "enabled": true
+    },
+    {
+      "innovation": 1859,
+      "src": 842,
+      "dst": 6,
+      "weight": -0.014905203492241554,
+      "enabled": true
+    },
+    {
+      "innovation": 1860,
+      "src": 5,
+      "dst": 842,
+      "weight": -0.4058800907224736,
+      "enabled": true
+    }
+  ]
+}

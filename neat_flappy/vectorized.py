@@ -15,19 +15,19 @@ tools keep the authoritative pygame engine; this module never imports pygame.
 """
 from __future__ import annotations
 
-import random
 from typing import Callable
 
 import jax
 import jax.numpy as jnp
 import numpy as np
 
+from .schedule import OBSERVATION_COUNT, pipe_count_for, pipe_schedule
+
 BIRD_X = 230.0
 BIRD_WIDTH = 68.0
 BIRD_HEIGHT = 48.0
 PIPE_WIDTH = 104.0
 PIPE_SPRITE_HEIGHT = 640.0
-PIPE_GAP = 200.0
 PIPE_VEL = 5.0
 SPAWN_X = 600.0
 FIRST_PIPE_X = 700.0
@@ -35,6 +35,7 @@ START_Y = 350.0
 FLOOR_DEATH_Y = 692.0  # y + BIRD_HEIGHT - 10 >= FLOOR (730)
 CEILING_DEATH_Y = -50.0
 WIN_HEIGHT = 800.0
+WIN_WIDTH = 600.0
 MAX_PIPES = 8
 JUMP_VEL = -10.5
 SURVIVAL_REWARD = 0.1
@@ -43,24 +44,15 @@ PASS_REWARD = 5.0
 
 
 def pipe_heights(seed: int, count: int) -> np.ndarray:
-    """Precompute the pipe height sequence a pygame episode would draw.
-
-    ``FlappyEpisode`` draws each pipe height as ``randrange(50, 450)`` from
-    ``random.Random(seed)`` and uses the RNG for nothing else, so the whole
-    schedule is reproducible here. ``count = max_frames // 40 + 16`` is a
-    generous upper bound on pipes spawned within ``max_frames`` (a pipe is
-    passed roughly every 74 frames); if a run ever needs more, the engine
-    clamps to the last precomputed height, which only affects frames beyond
-    any realistic horizon.
-    """
-    rng = random.Random(seed)
-    return np.asarray([rng.randrange(50, 450) for _ in range(count)], dtype=np.float32)
+    """Return only the gap-top heights of ``seed``'s schedule."""
+    return pipe_schedule(seed, count)[0]
 
 
 def run_episodes(
     weights: jax.Array,
     forward: Callable[[jax.Array, jax.Array], jax.Array],
     heights: jax.Array,
+    gaps: jax.Array,
     max_frames: int,
     sample: bool,
     root_key: jax.Array,
@@ -79,7 +71,7 @@ def run_episodes(
       returns: (N,) float32 total reward per bird.
       scores:  (N,) int32 pipes passed per bird.
       frames:  (N,) int32 frames the bird was alive at frame start.
-      obs:     (max_frames, N, 2) float32 observations.
+      obs:     (max_frames, N, OBSERVATION_COUNT) float32 observations.
       actions: (max_frames, N) bool, False for dead lanes.
       rewards: (max_frames, N) float32 per-frame reward.
       alive:   (max_frames, N) bool, lane alive at that frame's start.
@@ -99,6 +91,8 @@ def run_episodes(
     world = {
         "px": jnp.zeros(MAX_PIPES, jnp.float32).at[0].set(FIRST_PIPE_X),
         "ph": jnp.zeros(MAX_PIPES, jnp.float32).at[0].set(heights[0]),
+        "pg": jnp.zeros(MAX_PIPES, jnp.float32).at[0].set(gaps[0]),
+        "pi": jnp.zeros(MAX_PIPES, jnp.int32),
         "passed": jnp.zeros(MAX_PIPES, jnp.bool_),
         "active": jnp.zeros(MAX_PIPES, jnp.bool_).at[0].set(True),
         "spawn_index": jnp.asarray(1, jnp.int32),
@@ -122,17 +116,31 @@ def run_episodes(
         # 2. Target pipe: smallest px with px + width >= bird x, else smallest px.
         px = world["px"]
         ph = world["ph"]
+        pg = world["pg"]
         active = world["active"]
         qualifies = active & (px + PIPE_WIDTH >= BIRD_X)
         candidate = jnp.where(qualifies, px, jnp.inf)
         target = jnp.argmin(candidate)
         fallback = jnp.argmin(jnp.where(active, px, jnp.inf))
         target = jnp.where(jnp.isinf(candidate[target]), fallback, target)
-        gap_center = ph[target] + PIPE_GAP / 2.0
+        gap_size = pg[target]
+        gap_center = ph[target] + gap_size / 2.0
+        target_x = px[target]
 
-        # 3. Observation.
+        # 3. Observation. The next pipe's gap center comes from the schedule
+        # rather than the ring buffer, so the lookahead is defined even before
+        # the following pipe has spawned.
+        following = jnp.minimum(world["pi"][target] + 1, heights.shape[0] - 1)
+        next_center = heights[following] + gaps[following] / 2.0
         obs = jnp.stack(
-            ((gap_center - y) / WIN_HEIGHT, last_disp / 16.0), axis=-1
+            (
+                (gap_center - y) / WIN_HEIGHT,
+                last_disp / 16.0,
+                jnp.broadcast_to(gap_size / WIN_HEIGHT, y.shape),
+                (next_center - y) / WIN_HEIGHT,
+                jnp.broadcast_to((target_x - BIRD_X) / WIN_WIDTH, y.shape),
+            ),
+            axis=-1,
         )
 
         # 4. Survival reward.
@@ -166,8 +174,9 @@ def run_episodes(
             BIRD_X + BIRD_WIDTH > px_p
         )
         top_hit = x_overlap & (y < ph_p) & (y + BIRD_HEIGHT > ph_p - PIPE_SPRITE_HEIGHT)
-        bottom_hit = x_overlap & (y < ph_p + PIPE_SPRITE_HEIGHT + PIPE_GAP) & (
-            y + BIRD_HEIGHT > ph_p + PIPE_GAP
+        pg_p = pg[:, None]
+        bottom_hit = x_overlap & (y < ph_p + PIPE_SPRITE_HEIGHT + pg_p) & (
+            y + BIRD_HEIGHT > ph_p + pg_p
         )
         collided = alive & jnp.any(top_hit | bottom_hit, axis=0)
         reward = reward - collided.astype(jnp.float32)
@@ -185,9 +194,13 @@ def run_episodes(
         has_free = jnp.any(free)
         slot = jnp.argmin(active.astype(jnp.int32))
         do_spawn = did_pass & has_free
-        height = heights[jnp.minimum(world["spawn_index"], heights.shape[0] - 1)]
+        spawn_at = jnp.minimum(world["spawn_index"], heights.shape[0] - 1)
+        height = heights[spawn_at]
+        gap = gaps[spawn_at]
         px = jnp.where(do_spawn, px.at[slot].set(SPAWN_X), px)
         ph = jnp.where(do_spawn, ph.at[slot].set(height), ph)
+        pg = jnp.where(do_spawn, pg.at[slot].set(gap), pg)
+        pi = jnp.where(do_spawn, world["pi"].at[slot].set(spawn_at), world["pi"])
         passed = jnp.where(do_spawn, passed.at[slot].set(False), passed)
         active = jnp.where(do_spawn, active.at[slot].set(True), active)
         spawn_index = world["spawn_index"] + do_spawn.astype(jnp.int32)
@@ -213,6 +226,8 @@ def run_episodes(
         world = {
             "px": px,
             "ph": ph,
+            "pg": pg,
+            "pi": pi,
             "passed": passed,
             "active": active,
             "spawn_index": spawn_index,
@@ -245,8 +260,8 @@ def get_runner(
 ) -> Callable:
     """Return a jitted episode runner cached per (topology, horizon, mode).
 
-    The returned callable takes ``(weights, heights, root_key, generation,
-    cycle, genome_ids)`` and returns the ``run_episodes`` result dict. One
+    The returned callable takes ``(weights, heights, gaps, root_key,
+    generation, cycle, genome_ids)`` and returns the ``run_episodes`` result dict. One
     XLA program per distinct key replaces the per-frame dispatch storm.
     """
     key = (signature, max_frames, sample)
@@ -255,6 +270,7 @@ def get_runner(
         def run(
             weights: jax.Array,
             heights: jax.Array,
+            gaps: jax.Array,
             root_key: jax.Array,
             generation: jax.Array,
             cycle: jax.Array,
@@ -264,6 +280,7 @@ def get_runner(
                 weights,
                 forward,
                 heights,
+                gaps,
                 max_frames,
                 sample,
                 root_key,

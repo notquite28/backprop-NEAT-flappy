@@ -1,0 +1,115 @@
+{
+  "version": 1,
+  "generation": 27,
+  "fitness": 71.19233017667717,
+  "score": 6.0,
+  "input_count": 5,
+  "output_count": 1,
+  "nodes": [
+    {
+      "id": 0,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 1,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 2,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 3,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 4,
+      "kind": "input",
+      "activation": null
+    },
+    {
+      "id": 5,
+      "kind": "bias",
+      "activation": null
+    },
+    {
+      "id": 6,
+      "kind": "output",
+      "activation": null
+    },
+    {
+      "id": 501,
+      "kind": "hidden",
+      "activation": "abs"
+    }
+  ],
+  "connections": [
+    {
+      "innovation": 0,
+      "src": 0,
+      "dst": 6,
+      "weight": -0.7313267063563755,
+      "enabled": true
+    },
+    {
+      "innovation": 1,
+      "src": 1,
+      "dst": 6,
+      "weight": 0.05879632883017547,
+      "enabled": true
+    },
+    {
+      "innovation": 2,
+      "src": 2,
+      "dst": 6,
+      "weight": -0.025656831101197156,
+      "enabled": true
+    },
+    {
+      "innovation": 3,
+      "src": 3,
+      "dst": 6,
+      "weight": -0.016679385293753318,
+      "enabled": true
+    },
+    {
+      "innovation": 4,
+      "src": 4,
+      "dst": 6,
+      "weight": 0.12096738087665329,
+      "enabled": true
+    },
+    {
+      "innovation": 5,
+      "src": 5,
+      "dst": 6,
+      "weight": -0.06603802318886508,
+      "enabled": false
+    },
+    {
+      "innovation": 1130,
+      "src": 5,
+      "dst": 501,
+      "weight": 1.0022027528610649,
+      "enabled": true
+    },
+    {
+      "innovation": 1131,
+      "src": 501,
+      "dst": 6,
+      "weight": -0.07040946456918737,
+      "enabled": true
+    },
+    {
+      "innovation": 1132,
+      "src": 1,
+      "dst": 501,
+      "weight": 0.20382551836122748,
+      "enabled": true
+    }
+  ]
+}
