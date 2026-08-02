@@ -51,52 +51,6 @@ Full timeline, diagnostics, and per-run analysis are in
   </tr>
 </table>
 
-## Long-horizon comparison
-
-The normal training evaluation stops after 1,000 frames. A separate deterministic
-comparison ran the global champion, the best retained generation 9 offspring,
-and the generation 9 topology sample for up to 100,000 frames or 1,000 in-game
-points. Each pair used the same pipe sequence.
-
-| Seed | Genome | Points | Frames | Termination |
-| ---: | --- | ---: | ---: | --- |
-| 0 | Global best | 1,000 | 75,020 | Score cap |
-| 0 | Generation 9 best offspring | 1,000 | 75,020 | Score cap |
-| 0 | Generation 9 topology sample | 0 | 82 | Death |
-| 9,000 | Global best | 1,000 | 75,020 | Score cap |
-| 9,000 | Generation 9 best offspring | 1,000 | 75,020 | Score cap |
-| 9,000 | Generation 9 topology sample | 0 | 81 | Death |
-| 9,001 | Global best | 1,000 | 75,020 | Score cap |
-| 9,001 | Generation 9 best offspring | 1,000 | 75,020 | Score cap |
-| 9,001 | Generation 9 topology sample | 0 | 81 | Death |
-| 9,002 | Global best | 1,000 | 75,020 | Score cap |
-| 9,002 | Generation 9 best offspring | 1,000 | 75,020 | Score cap |
-| 9,002 | Generation 9 topology sample | 0 | 81 | Death |
-
-The global champion and the generation 9 best offspring reach the 1,000-point
-cap in exactly 75,020 frames on all four seeds. Both are minimal
-three-connection policies with the same weights. The generation 9 topology
-sample, an eight-node network with fifteen connections selected for structural
-complexity, dies within 82 frames on every seed. Its saved fitness (6.361)
-reflects the untrained complex network: four policy-gradient cycles per
-generation are not enough to converge a random high-connection topology, and
-the connection penalty keeps its fitness far below the champion's 156.850.
-
-Reproduce either pair with:
-
-```sh
-SDL_VIDEODRIVER=dummy uv run python tools/compare_genomes.py \
-  --best checkpoints/best_genome.json \
-  --candidate checkpoints/generation_009.json \
-  --candidate-label generation-9-best-offspring \
-  --seeds 0 9000 9001 9002 \
-  --max-score 1000 \
-  --max-frames 100000
-```
-
-Use `checkpoints/topology_009.json` as `--candidate` to compare the plotted
-topology sample. The score cap is an actual episode termination condition, not
-a post-processing truncation.
 
 ## System overview
 
@@ -174,6 +128,24 @@ same seeded pipe schedule:
 - Bird jump velocity: `-10.5`.
 - One seeded pipe sequence shared by all birds in a candidate batch.
 - Original bird tilt and animation sequence (Pygame engine only).
+
+### Pipe schedule
+
+`neat_flappy.schedule.pipe_schedule` creates one deterministic sequence of gap
+top positions and gap sizes from the episode seed. Even-indexed gaps use the
+lower center band. Odd-indexed gaps use the upper center band.
+
+The initial gap size is an integer from 130 through 260 pixels. For consecutive
+gap centers separated by \(d\) pixels, the target gap must satisfy:
+
+```math
+g \geq \min(260,\lceil120+0.15d\rceil)
+```
+
+The schedule increases a smaller sampled gap to meet this floor. If resampling
+the top position still does not meet the floor, the schedule uses the
+260-pixel maximum. This rule keeps large vertical transitions physically
+passable. Both game engines use the resulting integer-valued schedule.
 
 The engines differ only in collision testing. The Pygame engine uses
 pixel-perfect sprite masks and rounds the bird height to an integer pixel.
@@ -372,11 +344,12 @@ Historical protection uses up to:
 - Five all-time hall-of-fame copies.
 - One current champion copy from each of the five clusters.
 
-Generation 0 evaluates 100 mutable genomes. Each later generation starts with
-100 new mutable children, removes duplicate elite genomes, inserts the unique
-elites, and uniformly removes the same number of children. The evaluated
-population therefore remains exactly 100 candidates. Injected elites receive
-fresh IDs and are re-evaluated on the common benchmark seeds.
+Generation 0 evaluates `population_size` mutable genomes. Each later generation
+starts with the same number of mutable children, removes duplicate elite
+genomes, inserts the unique elites, and uniformly removes the same number of
+children. The evaluated population therefore remains at `population_size`
+candidates. Injected elites receive fresh IDs and are re-evaluated on the
+common benchmark seeds.
 
 Once per generation, extinction is sampled with probability `0.5`. Cluster
 quality is the fitness of its best member, as in Hardmaru's implementation. If
@@ -423,7 +396,7 @@ above.
 The task requires these differences:
 
 - The graph is a feed-forward DAG. Hardmaru permits recurrent links.
-- The policy has two Flappy Bird state inputs instead of two classifier
+- The policy has five Flappy Bird observations instead of two classifier
   coordinates.
 - REINFORCE replaces supervised logistic-regression gradients because the game
   has rewards, not labels.
@@ -436,7 +409,7 @@ The task requires these differences:
 ## Feed-forward compilation in JAX
 
 The phenotype compiler keeps only nodes and enabled edges that can reach output
-node 3. It creates:
+node 6. It creates:
 
 - A dense node-ID-to-slot map.
 - Static source and destination arrays.
@@ -557,7 +530,8 @@ normalized gradient term.
 
 Backpropagation must not reduce fixed-seed complexity-adjusted fitness.
 
-1. Score every candidate on three common deterministic seeds.
+1. Score every candidate on the configured common deterministic seeds (three by
+   default).
 2. Save its weights and RMSProp cache.
 3. Run the policy-gradient cycles.
 4. Score it again on the same seeds.
@@ -577,12 +551,13 @@ Generation 0:
 
 Each later generation:
 
-1. Reproduce 100 mutable children.
+1. Reproduce `population_size` mutable children.
 2. Copy the five hall-of-fame members and five current species elites.
 3. Remove duplicate elites and uniformly retain enough children to keep the
-   population at exactly 100.
-4. Run paired policy-gradient updates on all 100 candidates. Training trajectories
-   change by generation, but fixed benchmark seeds keep elite fitness comparable.
+   configured population size.
+4. Run paired policy-gradient updates on all candidates. Training trajectories
+   change by generation, but fixed benchmark seeds keep elite fitness
+   comparable.
 5. Revert harmful updates.
 6. Run PAM clustering.
 7. Rebuild the all-time hall of fame and current species elites.
@@ -656,10 +631,18 @@ Useful options:
 --eval-episodes 3
 --fitness-threshold 100
 --checkpoint-dir checkpoints
+--eval-seeds 0 1 2
+--pg-seed 0
 ```
 
 `population-size` must be divisible by 5. Hardmaru mode requires exactly five
 clusters.
+
+By default, evaluation uses `seed+9000+i`, and policy-gradient rollouts use
+`seed + generation*10000 + cycle`. `--eval-seeds` replaces the evaluation
+layouts with an explicit list. `--pg-seed` uses one layout for every
+policy-gradient rollout. Set both options to the same seed to align learning
+and scoring on one layout.
 
 ## Checkpoints
 
@@ -743,14 +726,12 @@ magick -delay 7 -loop 0 /tmp/neatbird-middle-frames/frame_*.png \
   -resize 360x480 docs/assets/middle-candidate.gif
 ```
 
-The documented media assets use these checkpoint records:
+The current replay assets use these checkpoint records:
 
-| Asset | Checkpoint |
+| Asset | Checkpoint and run |
 | --- | --- |
-| `original-genome.gif` | `starting_genome.json` |
-| `middle-candidate.gif` | `representative_002.json` |
-| `final-champion.gif` | `best_genome.json` |
-| `graph-comparison.webp` | `best_genome.json` and `topology_009.json` |
+| `champion-gen29.gif` | `checkpoints/best_genome.json`, Run 1 |
+| `champion-seed0-gen38.gif` | `checkpoints_seed0/best_genome.json`, Run 2 |
 
 ImageMagick is only needed to regenerate GIF files. It is not a project
 dependency.
@@ -796,6 +777,7 @@ engine determinism, reward accounting, and trajectory shapes.
 flappy_bird.py                 Train, replay, and graph CLI
 neat_flappy/game.py            Game mechanics, episode state, renderer
 neat_flappy/genome.py          Genes, innovations, mutations, crossover, JSON
+neat_flappy/schedule.py        Shared deterministic pipe schedule
 neat_flappy/phenotype.py       DAG compiler and JAX numeric programs
 neat_flappy/vectorized.py      Vectorized lax.scan training episode engine
 neat_flappy/evolution.py       Distance, PAM clusters, archives, reproduction

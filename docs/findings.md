@@ -1,6 +1,6 @@
 # Findings: Randomized Pipes, Trainer Fixes, and Schedule Repair
 
-Date: 2026-07-31
+Date: 2026-08-01
 
 ## Overview
 
@@ -8,7 +8,8 @@ This document records a sequence of experiments on the JAX NEAT Flappy Bird
 trainer. A prior change (by another agent) introduced randomized pipe gaps and
 a wider observation space. The change made the task harder. Four training runs
 were done. Each run exposed a new defect. Each defect was diagnosed and fixed.
-The final run cleared 66 pipes on seed 0, up from 2 on the original task.
+The final run cleared 66 pipes on seed 0, up from 2 in the first
+randomized-pipe run.
 
 ## Timeline
 
