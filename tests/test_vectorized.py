@@ -68,11 +68,20 @@ def test_same_seed_is_bitwise_repeatable():
     np.testing.assert_array_equal(first["frames"], second["frames"])
 
 
-def test_no_action_policy_dies_on_floor_without_scoring():
+def test_no_action_policy_distinguishes_last_frame_death_from_cap_survival():
     genome, store = policy_genome(0.0, 0.0, 0.0)  # logit 0 -> never jumps
-    result = run(genome, store, 300)
-    assert int(result["frames"][0]) < 300
-    assert int(result["scores"][0]) == 0
+    long_result = run(genome, store, 300)
+    death_frame = int(long_result["frames"][0])
+    assert death_frame < 300
+    assert int(long_result["scores"][0]) == 0
+
+    death_at_cap = run(genome, store, death_frame)
+    assert int(death_at_cap["frames"][0]) == death_frame
+    assert bool(death_at_cap["survived"][0]) is False
+
+    survives_shorter_cap = run(genome, store, death_frame - 1)
+    assert int(survives_shorter_cap["frames"][0]) == death_frame - 1
+    assert bool(survives_shorter_cap["survived"][0]) is True
 
 
 def test_survival_reward_is_ten_cents_per_alive_frame():
@@ -83,6 +92,7 @@ def test_survival_reward_is_ten_cents_per_alive_frame():
     result = run(genome, store, max_frames)
     frames = int(result["frames"][0])
     assert frames == max_frames
+    assert bool(result["survived"][0]) is True
     assert int(result["scores"][0]) == 0
     assert float(result["returns"][0]) == pytest.approx(0.1 * frames, abs=1e-4)
 

@@ -11,6 +11,14 @@ were done. Each run exposed a new defect. Each defect was diagnosed and fixed.
 The final run cleared 66 pipes on seed 0, up from 2 in the first
 randomized-pipe run.
 
+## Interpretation note
+
+No exhaustive action-sequence reachability proof was run in either collision
+engine. Run 4 optimized one seed-0 layout. Its 66-pipe result is a
+same-schedule suffix, not evidence of cross-schedule generalization.
+The “evaluation” seeds in the timeline are selection/rollback data because they
+control optimization decisions. They are not held-out test seeds.
+
 ## Timeline
 
 ### Phase 1: Audit the uncommitted change
@@ -203,20 +211,15 @@ again, at a larger scale.
 
 ## Remaining lever
 
-The schedule is now physically passable everywhere. The trainer learns and
-scores on the same layout. The only remaining gap to indefinite play is the
-fixed-length scan. The JAX engine uses `jax.lax.scan` over `max_frames` steps.
-If the bird survives past the window, the death is invisible. If the bird dies
-early, compute is wasted on frozen dead lanes.
+A bounded `jax.lax.while_loop` could remove only trailing iterations after the
+final lane dies. It would still process fixed-width lanes while any lane lives,
+and it would require fixed-shape trajectory buffers and masks.
 
-Replacing `scan` with `while_loop` (loop until all lanes dead or a cap) makes
-the horizon track the failure structurally. This is the proper implementation
-of a score target: the episode ends on death, not on a frame count. It is a
-real rewrite of the vectorized engine and the policy-gradient buffers.
-
-A cheaper alternative is to retrain with a larger `--max-frames` value. Each
-widening has exposed the next death and let evolution push past it. The pattern
-held three times.
+This change is viable without reverse-mode differentiation through the
+simulation. `policy_gradient_cycle` materializes trajectories before
+`CompiledPhenotype.batch_value_and_grad`. JAX requires a `while_loop` carry to
+retain fixed shape and dtype, and does not support reverse-mode differentiation
+through `while_loop`. This optimization is not the only path to longer play.
 
 ## Artifacts
 

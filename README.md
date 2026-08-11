@@ -15,9 +15,10 @@ feed-forward compiler, optimizer, checkpoints, and SVG graph renderer.
 The task uses randomized pipe gaps (130 to 260 pixels per pipe) and alternating
 gap-center bands. Each bird receives 5 observations. The default trainer
 stalled at 2 pipes because the policy-gradient seed formula differed from the
-evaluation seed formula. A fixed-seed mode (`--eval-seeds` and `--pg-seed`)
-aligns learning and scoring on one layout. A jump-scaled gap floor in the
-schedule removes physically impossible transitions.
+selection/rollback seed formula. A fixed-seed mode (`--eval-seeds` and
+`--pg-seed`) aligns learning and selection on one layout. A jump-scaled gap
+floor is an engineering heuristic that made the observed transition less
+pathological. It is not an exhaustive reachability proof.
 
 | Run | Schedule | Window | Best score | True death frame |
 | ---: | --- | ---: | ---: | ---: |
@@ -26,10 +27,21 @@ schedule removes physically impossible transitions.
 | 3 | old | 3000 | 17 | 1362 |
 | 4 | fixed | 3000 | 66 | 4972 |
 
-Run 4 cleared 66 pipes on seed 0 before dying at frame 4972. The death is a
-policy failure, not a geometry failure. Every transition at the death point
-passes the gap-floor check. The bird was trained on 39 pipes (the 3000-frame
-window) and never received gradient signal beyond that.
+Run 4 used seed 0 for policy-gradient trajectories, rollback decisions,
+evolutionary fitness, and champion selection. It cleared 66 pipes on seed 0
+before dying at frame 4972. Pipes 40 onward were an unseen suffix of the seed-0
+schedule because the 3000-frame training window covered 39 pipes. The replay is
+temporal extrapolation on that schedule, not cross-schedule generalization.
+
+The saved champion was also evaluated with the JAX AABB engine on 100
+predeclared held-out schedules from the repaired generator:
+
+| Model | Optimization seeds | Test seeds | Mean pipes | Median | P10 | P90 | Minimum | Survived 5,000 frames |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `checkpoints_fixed/best_genome.json` | seed 0 | 1,000,000–1,000,099 | 20.1 | 13.0 | 0.0 | 60.300000000000026 | 0 | 0.08 |
+
+This is held-out performance across schedules from the repaired generator. It
+does not prove that every generated transition is reachable.
 
 Full timeline, diagnostics, and per-run analysis are in
 [docs/findings.md](docs/findings.md).
@@ -94,7 +106,7 @@ o_t =
 
 where:
 
-- $y_t$ is the bird height.
+- $y_t$ is the bird y-position.
 - $c_t$ is the center of the current pipe gap and $g_t$ is its height.
 - $\Delta y_t$ is the displacement from the preceding physics step.
 - $c^{+}_t$ is the center of the *following* pipe gap.
@@ -117,9 +129,9 @@ Action `1` makes the bird jump. Deterministic evaluation and replay jump when
 $z_t>0$, which is equivalent to $\sigma(z_t)>0.5$. Policy-gradient episodes
 sample the action from the Bernoulli distribution.
 
-Training uses a pure-JAX vectorized engine. Replay and rendering use the
-original Pygame state machine. Both engines share the same constants and the
-same seeded pipe schedule:
+Training and held-out evaluation use the pure-JAX vectorized engine. Replay and
+rendering use the original Pygame state machine. Both engines share the same
+constants and the same seeded pipe schedule:
 
 - Window size: 600 by 800.
 - Floor height: 730.
@@ -144,13 +156,16 @@ g \geq \min(260,\lceil120+0.15d\rceil)
 
 The schedule increases a smaller sampled gap to meet this floor. If resampling
 the top position still does not meet the floor, the schedule uses the
-260-pixel maximum. This rule keeps large vertical transitions physically
-passable. Both game engines use the resulting integer-valued schedule.
+260-pixel maximum. This jump-scaled floor is an engineering heuristic that made
+the observed transition less pathological. It is not an exhaustive proof that
+every generated transition is reachable. Both game engines use the resulting
+integer-valued schedule.
 
-The engines differ only in collision testing. The Pygame engine uses
-pixel-perfect sprite masks and rounds the bird height to an integer pixel.
-The training engine uses axis-aligned bounding boxes against the bird image
-rectangle of 68 by 48 pixels. The box test is slightly more conservative, so
+The collision implementations differ. The Pygame engine uses
+pixel-perfect sprite masks and rounds the bird y-position to an integer pixel.
+The 68 by 48 pixel bird sprite has a separate 48-pixel height. The training
+engine uses axis-aligned bounding boxes against that image rectangle. The box
+test is slightly more conservative, so
 a genome trained with the vectorized engine can replay marginally differently
 under Pygame.
 
@@ -288,6 +303,11 @@ w \leftarrow w + \epsilon,\qquad
 The implementation does not delete nodes or connections.
 
 ## Crossover
+Canonical NEAT chooses matching genes randomly and inherits disjoint and excess
+genes from the fitter parent. At equal fitness, it can inherit unilateral genes
+randomly. This Ha-style implementation instead copies the union of unilateral
+genes and randomizes only matching genes.
+
 
 Crossover aligns parent connection genes by innovation ID.
 
@@ -302,6 +322,10 @@ This is the selected Hardmaru-style reproduction rule. It does not discard
 unilateral genes based on parent fitness.
 
 ## Compatibility and clusters
+PAM is a Ha-style diversity heuristic. It encourages structurally different
+genomes to reproduce in separate clusters. It is not canonical NEAT
+compatibility speciation with explicit fitness sharing.
+
 
 The population uses five PAM k-medoids clusters. Compatibility distance is:
 
@@ -552,15 +576,15 @@ Generation 0:
 Each later generation:
 
 1. Reproduce `population_size` mutable children.
-2. Copy the five hall-of-fame members and five current species elites.
+2. Copy the five hall-of-fame members and five current cluster elites.
 3. Remove duplicate elites and uniformly retain enough children to keep the
    configured population size.
 4. Run paired policy-gradient updates on all candidates. Training trajectories
-   change by generation, but fixed benchmark seeds keep elite fitness
-   comparable.
+   change by generation, but fixed selection/rollback layouts keep elite
+   fitness comparable.
 5. Revert harmful updates.
 6. Run PAM clustering.
-7. Rebuild the all-time hall of fame and current species elites.
+7. Rebuild the all-time hall of fame and current cluster elites.
 8. Save the global champion and all elite snapshots.
 9. Save the best retained offspring, representative offspring, and topology
    sample for the current generation.
@@ -638,11 +662,13 @@ Useful options:
 `population-size` must be divisible by 5. Hardmaru mode requires exactly five
 clusters.
 
-By default, evaluation uses `seed+9000+i`, and policy-gradient rollouts use
-`seed + generation*10000 + cycle`. `--eval-seeds` replaces the evaluation
-layouts with an explicit list. `--pg-seed` uses one layout for every
+By default, selection/rollback uses `seed+9000+i`, and policy-gradient rollouts
+use `seed + generation*10000 + cycle`. `--eval-seeds` replaces the
+selection/rollback layouts with an explicit list. These layouts are
+optimization data because they control update acceptance, fitness, clustering,
+archives, and champion selection. `--pg-seed` uses one layout for every
 policy-gradient rollout. Set both options to the same seed to align learning
-and scoring on one layout.
+and selection on one layout.
 
 ## Checkpoints
 
@@ -659,7 +685,7 @@ The trainer writes:
 - `hall_of_fame/generation_NNN_rank_RR.json`: The five all-time elites after
   that generation.
 - `species_elites/generation_NNN_species_SS.json`: Best candidate from each
-  current PAM species.
+  current PAM cluster. The path keeps its historical name.
 
 Checkpoint schema version 1 contains:
 
@@ -682,6 +708,22 @@ uv run python flappy_bird.py replay \
 
 Replay uses deterministic actions at 30 frames per second. Close the window to
 stop.
+
+Evaluate a saved champion on an inclusive held-out seed range with the same JAX
+AABB engine used for selection:
+
+```sh
+uv run python tools/evaluate_champion.py \
+  --genome checkpoints_fixed/best_genome.json \
+  --seed-start 1000000 \
+  --seed-stop 1000099 \
+  --max-frames 5000
+```
+
+The evaluator loads and compiles the checkpoint once, then runs each schedule
+separately because each JAX invocation has one shared schedule. It reports every
+seed, pipe-count percentiles, the minimum, and frame-cap survival. The command
+above is the predeclared protocol used for the held-out table.
 
 ## Visualize the graph
 
@@ -749,7 +791,8 @@ masks, deterministic pipes, mutation invariants, cycle prevention, crossover,
 innovation and JSON round trips, activation semantics, unreachable nodes,
 batched `jit`/`vmap` equivalence, finite gradients, PAM, extinction, fixed-size
 elite injection, archive snapshots, harmful-update rollback, and vectorized
-engine determinism, reward accounting, and trajectory shapes.
+engine determinism, reward accounting, trajectory shapes, final liveness, and
+the held-out evaluator report contract.
 
 ## References
 
@@ -779,12 +822,13 @@ neat_flappy/game.py            Game mechanics, episode state, renderer
 neat_flappy/genome.py          Genes, innovations, mutations, crossover, JSON
 neat_flappy/schedule.py        Shared deterministic pipe schedule
 neat_flappy/phenotype.py       DAG compiler and JAX numeric programs
-neat_flappy/vectorized.py      Vectorized lax.scan training episode engine
+neat_flappy/vectorized.py      Vectorized lax.scan JAX episode engine
 neat_flappy/evolution.py       Distance, PAM clusters, archives, reproduction
 neat_flappy/training.py        Evaluation, REINFORCE, RMSProp, rollback
 neat_flappy/visualization.py   Dependency-free SVG graph rendering
 tools/capture_replay.py        Headless replay frame capture
 tools/compare_genomes.py       Fixed-seed long-horizon genome comparison
+tools/evaluate_champion.py      JAX held-out checkpoint evaluation
 imgs/                          Original game image assets
 docs/assets/                   README screenshots and animations
 tests/                         Behavioral and numerical tests
@@ -794,8 +838,8 @@ tests/                         Behavioral and numerical tests
 
 - The game module does not import genome or evolution types.
 - Training never opens a Pygame window.
-- Training uses the vectorized JAX engine. Replay and tools use the Pygame
-  state machine. Both share the same constants, pipe schedule, and rewards.
+- JAX is used for training and held-out evaluation. Pygame is used for replay
+  and replay tools. Both share the same constants, pipe schedule, and rewards.
 - The graph is always acyclic.
 - Topology stays on the host.
 - Only fixed-topology numeric weights enter JAX automatic differentiation.

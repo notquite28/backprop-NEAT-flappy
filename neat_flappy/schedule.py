@@ -7,8 +7,9 @@ Three properties shape the task. Gap size varies per pipe, so the safe flap
 threshold scales as error/gap rather than as a fixed offset. Consecutive gaps
 alternate between a low and a high band, so the bird must trade off its
 position in the current gap against the travel required to reach the next one.
-A wide vertical move between two gaps forces the later gap wider, so every
-transition stays physically passable and no level is impossible by geometry.
+A wide vertical move between two gaps forces the later gap wider. This is an
+engineering heuristic that reduces pathological transitions, not an exhaustive
+reachability proof in either physics engine.
 """
 from __future__ import annotations
 

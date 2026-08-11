@@ -71,6 +71,7 @@ def run_episodes(
       returns: (N,) float32 total reward per bird.
       scores:  (N,) int32 pipes passed per bird.
       frames:  (N,) int32 frames the bird was alive at frame start.
+      survived: (N,) bool, lane alive after the final frame.
       obs:     (max_frames, N, OBSERVATION_COUNT) float32 observations.
       actions: (max_frames, N) bool, False for dead lanes.
       rewards: (max_frames, N) float32 per-frame reward.
@@ -242,6 +243,7 @@ def run_episodes(
         "returns": bird["returns"],
         "scores": bird["scores"],
         "frames": bird["frames"],
+        "survived": bird["alive"],
         "obs": obs,
         "actions": actions,
         "rewards": rewards,

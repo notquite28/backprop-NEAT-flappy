@@ -33,7 +33,7 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         nargs="*",
         default=None,
-        help="fixed eval layouts; overrides the derived seed+9000+i list",
+        help="fixed selection/rollback layouts; overrides derived seed+9000+i",
     )
     train.add_argument(
         "--pg-seed",

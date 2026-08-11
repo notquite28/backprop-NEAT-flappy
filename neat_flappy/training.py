@@ -69,7 +69,7 @@ class TrainingConfig:
             raise ValueError("eval_seeds must contain at least one seed")
 
     def get_eval_seeds(self) -> list[int]:
-        """Eval layouts. ``eval_seeds`` overrides the derived ``seed+9000+i`` list."""
+        """Selection/rollback layouts; an override replaces ``seed+9000+i``."""
         if self.eval_seeds is not None:
             return list(self.eval_seeds)
         return [self.seed + 9_000 + index for index in range(self.eval_episodes)]
